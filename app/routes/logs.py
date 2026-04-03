@@ -5,7 +5,7 @@ from app.database import get_db
 from app.utils.normalizer import normalize_log
 from app.detection_engine import run_detection
 from datetime import datetime
-from ml.predict import predict_log  # 🔥 ML
+from ml.predict import predict_log
 
 router = APIRouter(prefix="/logs")
 
@@ -25,7 +25,7 @@ def receive_log(log: dict):
     # إضافة timestamp
     normalized["timestamp"] = datetime.utcnow().isoformat()
 
-    # 🔥 ML Prediction (بدون تخريب النظام)
+    # 🔥 ML Prediction
     try:
         prediction = predict_log(log)
         print("ML RESULT:", prediction)
@@ -33,7 +33,7 @@ def receive_log(log: dict):
         print("ML ERROR:", e)
         prediction = "UNKNOWN"
 
-    # 🔥 تعديل severity و event_type حسب ML
+    # 🔥 تعديل severity
     if prediction == "ATTACK":
         normalized["severity"] = "high"
         normalized["event_type"] = "attack"
@@ -59,13 +59,13 @@ def receive_log(log: dict):
     db.commit()
 
     # ==============================
-    # تشغيل detection (زي ما هو)
+    # تشغيل detection
     # ==============================
     cursor.execute("SELECT * FROM logs")
     rows = cursor.fetchall()
-    logs = [dict(row) for row in rows]
+    all_logs = [dict(row) for row in rows]
 
-    alerts = run_detection(logs)
+    alerts = run_detection(all_logs)
 
     # ==============================
     # حفظ alerts
@@ -87,7 +87,7 @@ def receive_log(log: dict):
 
     return {
         "message": "Log received",
-        "prediction": prediction  # 🔥 أضفناها بالresponse
+        "prediction": prediction
     }
 
 
@@ -102,7 +102,6 @@ def get_logs():
 
     cursor.execute("SELECT * FROM logs ORDER BY id DESC")
     rows = cursor.fetchall()
-
     logs = [dict(row) for row in rows]
 
     db.close()

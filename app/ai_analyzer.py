@@ -1,17 +1,23 @@
-from sklearn.ensemble import IsolationForest
-import numpy as np
+import joblib
+import pandas as pd
 
-def analyze_logs(logs):
+model, features = joblib.load("ml/model.pkl")
 
-    data = []
+def predict_log(log):
+    try:
+        df = pd.DataFrame([log])
+        df = df.reindex(columns=features, fill_value=0)
 
-    for log in logs:
-        data.append([len(log.message)])
+        score = model.decision_function(df)[0]
+        prediction = model.predict(df)[0]
 
-    model = IsolationForest(contamination=0.1)
+        if prediction == -1:
+            label = "ANOMALY"
+        else:
+            label = "NORMAL"
 
-    model.fit(data)
+        return label, score
 
-    predictions = model.predict(data)
-
-    return predictions
+    except Exception as e:
+        print("AI error:", e)
+        return None, None
