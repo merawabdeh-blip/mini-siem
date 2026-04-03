@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mini SIEM Dashboard</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: Arial;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .box {
+            flex: 1;
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .alert {
+            font-weight: bold;
+        }
+
+        .highlight {
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🔥 Mini SIEM Dashboard</h1>
+
+<div class="container">
+
+    <!-- Logs -->
+    <div class="box">
+        <h2>Logs</h2>
+        <div id="logs"></div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="box">
+        <h2>Alerts 🚨</h2>
+        <h3 id="alertCount"></h3>
+        <div id="alerts"></div>
+    </div>
+
+</div>
+
+<script>
+function getColor(type) {
+    if (type === "BRUTE_FORCE") return "red";
+    if (type === "PORT_SCAN") return "orange";
+    return "white";
+}
+
+async function fetchData() {
+    let logs = await fetch('/logs').then(r => r.json());
+    let alerts = await fetch('/logs/alerts').then(r => r.json());
+
+    // Logs مع timestamp
+    document.getElementById('logs').innerHTML =
+        logs.map(l => 
+            `<p>${l.timestamp} - ${l.source_ip} - ${l.event_type}</p>`
+        ).join('');
+
+    // عدد alerts
+    document.getElementById('alertCount').innerText =
+        "Total Alerts: " + alerts.length;
+
+    // Alerts مع ألوان + highlight لأول alert
+    document.getElementById('alerts').innerHTML =
+        alerts.map((a, i) => {
+            let style = i === 0 ? "font-weight:bold; font-size:18px;" : "";
+            return `<p class="alert" style="${style}; color:${getColor(a.type)}">
+                ${a.type} - ${a.source_ip}
+            </p>`;
+        }).join('');
+}
+
+// تحديث كل 3 ثواني
+setInterval(fetchData, 3000);
+fetchData();
+</script>
+
+</body>
+</html>

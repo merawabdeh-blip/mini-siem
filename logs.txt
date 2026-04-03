@@ -1,0 +1,7 @@
+INFO User login successful
+WARNING Multiple login attempts
+ERROR Failed password for admin
+INFO File uploaded
+ERROR Failed password for admin
+ERROR Failed login for user test
+ERROR Failed login for root
