@@ -54,7 +54,7 @@ def run_detection(logs):
         try:
             result = predict_log(log)
 
-            if result == "ANOMALY":
+            if result["label"] == "ANOMALY":
                 alerts.append({
                     "type": "AI_ANOMALY",
                     "source_ip": log.get("source_ip"),
