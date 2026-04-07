@@ -59,3 +59,12 @@ def insert_alert(conn, alert_type, source_ip, description, severity, timestamp):
         VALUES (?, ?, ?, ?, ?)
     """, (alert_type, source_ip, description, severity, timestamp))
     conn.commit()
+
+
+def insert_log(conn, source, source_ip, event_type, message, severity, timestamp):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO logs (source, source_ip, event_type, message, severity, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (source, source_ip, event_type, message, severity, timestamp))
+    conn.commit()
