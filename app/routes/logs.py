@@ -27,7 +27,8 @@ def receive_log(log: dict):
 
     # 🔥 ML Prediction
     try:
-        prediction = predict_log(log)
+        prediction_result = predict_log(normalized)
+        prediction = prediction_result["label"]
         print("ML RESULT:", prediction)
     except Exception as e:
         print("ML ERROR:", e)
