@@ -1,49 +1,31 @@
-from collections import defaultdict, Counter
+from collections import defaultdict
 from app.ai_analyzer import predict_log
 
 
 def run_detection(logs):
     alerts = []
 
-    # =========================
-    # 1. Rule-Based Detection (simple counter)
-    # =========================
-
-    ip_counter = Counter()
-
-    for log in logs:
-        ip = log.get("source_ip")
-        if ip:
-            ip_counter[ip] += 1
-
-    for ip, count in ip_counter.items():
-        if count > 10:
-            alerts.append({
-                "type": "Brute Force",
-                "source_ip": ip,
-                "severity": "medium",
-                "details": f"{count} requests detected"
-            })
-
-    # =========================
-    # 2. Advanced Rules
-    # =========================
-
     failed_login_counter = defaultdict(int)
     port_scan_counter = defaultdict(set)
 
+    # =========================
+    # 1. Rule-Based Detection
+    # =========================
     for log in logs:
         ip = log.get("source_ip")
         event = log.get("event_type")
+        message = log.get("message")
+
+        if not ip or not event:
+            continue
 
         # Brute Force
-        if event in ["FAILED_LOGIN", "login_failure"]:
+        if event == "FAILED_LOGIN":
             failed_login_counter[ip] += 1
 
         # Port Scan
-        if event == "port_scan":
-            port = log.get("message")
-            port_scan_counter[ip].add(port)
+        if event == "PORT_SCAN":
+            port_scan_counter[ip].add(message)
 
     # Brute Force Alert
     for ip, count in failed_login_counter.items():
@@ -51,8 +33,8 @@ def run_detection(logs):
             alerts.append({
                 "type": "BRUTE_FORCE",
                 "source_ip": ip,
-                "count": count,
-                "severity": "high"
+                "severity": "high",
+                "details": f"{count} failed login attempts detected"
             })
 
     # Port Scan Alert
@@ -61,21 +43,20 @@ def run_detection(logs):
             alerts.append({
                 "type": "PORT_SCAN",
                 "source_ip": ip,
-                "ports_scanned": len(ports),
-                "severity": "medium"
+                "severity": "medium",
+                "details": f"{len(ports)} ports scanned"
             })
 
     # =========================
-    # 3. AI Detection
+    # 2. AI Detection
     # =========================
-
     for log in logs:
         try:
             result = predict_log(log)
 
             if result == "ANOMALY":
                 alerts.append({
-                    "type": "AI Anomaly",
+                    "type": "AI_ANOMALY",
                     "source_ip": log.get("source_ip"),
                     "severity": "low",
                     "details": "Detected by AI"
@@ -85,13 +66,13 @@ def run_detection(logs):
             print("AI error:", e)
 
     # =========================
-    # 4. Hybrid Logic
+    # 3. Hybrid Logic
     # =========================
-
     for alert in alerts:
         if alert["type"] == "BRUTE_FORCE":
             for a in alerts:
-                if a["type"] == "AI Anomaly" and a["source_ip"] == alert["source_ip"]:
+                if a["type"] == "AI_ANOMALY" and a["source_ip"] == alert["source_ip"]:
                     alert["severity"] = "high"
+                    alert["details"] = "Brute force confirmed by AI"
 
     return alerts
