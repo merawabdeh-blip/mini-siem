@@ -3,6 +3,7 @@ import pandas as pd
 
 model, features = joblib.load("ml/model.pkl")
 
+
 def predict_log(log):
     try:
         df = pd.DataFrame([log])
@@ -16,8 +17,14 @@ def predict_log(log):
         else:
             label = "NORMAL"
 
-        return label, score
+        return {
+            "label": label,
+            "score": float(score)
+        }
 
     except Exception as e:
         print("AI error:", e)
-        return None, None
+        return {
+            "label": "UNKNOWN",
+            "score": None
+        }
