@@ -5,7 +5,7 @@ from app.database import get_db
 from app.utils.normalizer import normalize_log
 from app.detection_engine import run_detection
 from datetime import datetime
-from ml.predict import predict_log
+from app.ai_analyzer import predict_log
 
 router = APIRouter(prefix="/logs")
 
@@ -33,14 +33,6 @@ def receive_log(log: dict):
         print("ML ERROR:", e)
         prediction = "UNKNOWN"
 
-    # 🔥 تعديل severity
-    if prediction == "ATTACK":
-        normalized["severity"] = "high"
-        normalized["event_type"] = "attack"
-    else:
-        normalized["severity"] = "low"
-        normalized["event_type"] = "normal"
-
     # ==============================
     # إدخال log
     # ==============================
@@ -61,11 +53,7 @@ def receive_log(log: dict):
     # ==============================
     # تشغيل detection
     # ==============================
-    cursor.execute("SELECT * FROM logs")
-    rows = cursor.fetchall()
-    all_logs = [dict(row) for row in rows]
-
-    alerts = run_detection(all_logs)
+    alerts = run_detection([normalized])
 
     # ==============================
     # حفظ alerts
@@ -77,7 +65,7 @@ def receive_log(log: dict):
         """, (
             alert.get("type"),
             alert.get("source_ip"),
-            str(alert),
+            alert.get("details", ""),
             alert.get("severity"),
             datetime.utcnow().isoformat()
         ))
