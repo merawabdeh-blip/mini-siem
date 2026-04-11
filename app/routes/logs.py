@@ -1,10 +1,11 @@
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from pathlib import Path
+from datetime import datetime
+
 from app.database import get_db
 from app.utils.normalizer import normalize_log
 from app.detection_engine import run_detection
-from datetime import datetime
 from app.ai_analyzer import predict_log
 
 router = APIRouter(prefix="/logs")
@@ -15,7 +16,6 @@ router = APIRouter(prefix="/logs")
 # ==============================
 @router.post("/log")
 def receive_log(log: dict):
-
     normalized = normalize_log(log)
 
     db_gen = get_db()
@@ -25,10 +25,15 @@ def receive_log(log: dict):
     # إضافة timestamp
     normalized["timestamp"] = datetime.utcnow().isoformat()
 
-    # 🔥 ML Prediction
+    # ==============================
+    # ML Prediction
+    # ==============================
     try:
         prediction_result = predict_log(normalized)
-        prediction = prediction_result["label"]
+        if isinstance(prediction_result, dict):
+            prediction = prediction_result.get("label", "UNKNOWN")
+        else:
+            prediction = prediction_result
         print("ML RESULT:", prediction)
     except Exception as e:
         print("ML ERROR:", e)
@@ -37,19 +42,20 @@ def receive_log(log: dict):
     # ==============================
     # إدخال log
     # ==============================
-    cursor.execute("""
+    cursor.execute(
+        """
         INSERT INTO logs (source, source_ip, event_type, message, severity, timestamp)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, (
-        normalized.get("source"),
-        normalized.get("source_ip"),
-        normalized.get("event_type"),
-        normalized.get("message"),
-        normalized.get("severity"),
-        normalized.get("timestamp")
-    ))
-
-    db.commit()
+        """,
+        (
+            normalized["source"],
+            normalized["source_ip"],
+            normalized["event_type"],
+            normalized["message"],
+            normalized["severity"],
+            normalized["timestamp"],
+        ),
+    )
 
     # ==============================
     # تشغيل detection
@@ -60,22 +66,27 @@ def receive_log(log: dict):
     # حفظ alerts
     # ==============================
     for alert in alerts:
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO alerts (type, source_ip, description, severity, timestamp)
             VALUES (?, ?, ?, ?, ?)
-        """, (
-            alert.get("type"),
-            alert.get("source_ip"),
-            alert.get("details", ""),
-            alert.get("severity"),
-            datetime.utcnow().isoformat()
-        ))
+            """,
+            (
+                alert.get("event_type"),
+                alert.get("source_ip"),
+                alert.get("message"),
+                alert.get("severity"),
+                alert.get("timestamp"),
+            ),
+        )
 
     db.commit()
     db.close()
 
     return {
         "message": "Log received",
+        "normalized": normalized,
+        "alerts": alerts,
         "prediction": prediction
     }
 
@@ -108,7 +119,6 @@ def get_alerts():
 
     cursor.execute("SELECT * FROM alerts ORDER BY id DESC")
     rows = cursor.fetchall()
-
     alerts = [dict(row) for row in rows]
 
     db.close()

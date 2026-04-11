@@ -8,58 +8,55 @@ def normalize_log(log_line):
     # -------------------------
     if isinstance(log_line, dict):
         message = log_line.get("message", "")
-
-        # 🔥 نفس logic تبع string
-        if "Failed password" in message:
-            event_type = "FAILED_LOGIN"
-            severity = "high"
-        elif "Multiple login attempts" in message:
-            event_type = "BRUTE_FORCE"
-            severity = "high"
-        elif "login successful" in message:
-            event_type = "SUCCESS_LOGIN"
-            severity = "low"
-        else:
-            event_type = "UNKNOWN"
-            severity = "low"
-
-        return {
-            "source": log_line.get("source", "api"),
-            "source_ip": log_line.get("source_ip", f"192.168.1.{random.randint(1,255)}"),
-            "event_type": event_type,
-            "message": message,
-            "severity": severity,
-            "timestamp": datetime.now().isoformat()
-        }
+        source = log_line.get("source", "api")
+        source_ip = log_line.get("source_ip", f"192.168.1.{random.randint(1,255)}")
 
     # -------------------------
-    # إذا كان string (من file)
+    # إذا كان string (جاي من syslog)
     # -------------------------
-    log_line = log_line.strip()
-
-    if log_line.startswith("ERROR"):
-        severity = "high"
-    elif log_line.startswith("WARNING"):
-        severity = "medium"
     else:
+        message = str(log_line)
+        source = "syslog"
+        source_ip = f"192.168.1.{random.randint(1,255)}"
+
+    # نحول الرسالة لحروف صغيرة لتفادي مشاكل الكتابة
+    msg = message.lower()
+
+    # -------------------------
+    # Detection Rules
+    # -------------------------
+    if "failed_login" in msg or "failed password" in msg:
+        event_type = "FAILED_LOGIN"
+        severity = "high"
+
+    elif "multiple login attempts" in msg or "brute" in msg:
+        event_type = "BRUTE_FORCE"
+        severity = "high"
+
+    elif "port_scan" in msg or "scan" in msg:
+        event_type = "PORT_SCAN"
+        severity = "medium"
+
+    elif "login successful" in msg or "accepted password" in msg:
+        event_type = "SUCCESS_LOGIN"
         severity = "low"
 
-    if "Failed password" in log_line:
-        event_type = "FAILED_LOGIN"
-    elif "Multiple login attempts" in log_line:
-        event_type = "BRUTE_FORCE"
-    elif "login successful" in log_line:
-        event_type = "SUCCESS_LOGIN"
+    elif "attack" in msg:
+        event_type = "ATTACK"
+        severity = "high"
+
     else:
         event_type = "UNKNOWN"
+        severity = "low"
 
-    source_ip = f"192.168.1.{random.randint(1,255)}"
-
+    # -------------------------
+    # Return normalized log
+    # -------------------------
     return {
-        "source": "auth",
+        "source": source,
         "source_ip": source_ip,
         "event_type": event_type,
-        "message": log_line,
+        "message": message,
         "severity": severity,
         "timestamp": datetime.now().isoformat()
     }

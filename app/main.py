@@ -4,18 +4,26 @@ from app.routes.logs import router as logs_router
 
 app = FastAPI(title="Mini SIEM")
 
-# Initialize DB
+# -------------------------
+# Initialize Database
+# -------------------------
 init_db()
 
-# Routes
+# -------------------------
+# Include Routes
+# -------------------------
 app.include_router(logs_router)
 
-# Root
+# -------------------------
+# Root Endpoint
+# -------------------------
 @app.get("/")
 def root():
     return {"message": "Mini SIEM is running"}
 
-# Test endpoint
+# -------------------------
+# Test Endpoint
+# -------------------------
 @app.get("/logs/alerts")
 def test_alerts():
     return {"status": "working"}
