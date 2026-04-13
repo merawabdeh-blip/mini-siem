@@ -1,15 +1,15 @@
 from datetime import datetime
 import random
 
-def normalize_log(log_line):
 
+def normalize_log(log_line):
     # -------------------------
     # إذا كان dict (جاي من API)
     # -------------------------
     if isinstance(log_line, dict):
         message = log_line.get("message", "")
         source = log_line.get("source", "api")
-        source_ip = log_line.get("source_ip", f"192.168.1.{random.randint(1,255)}")
+        source_ip = log_line.get("source_ip", f"192.168.1.{random.randint(1, 255)}")
 
     # -------------------------
     # إذا كان string (جاي من syslog)
@@ -17,7 +17,7 @@ def normalize_log(log_line):
     else:
         message = str(log_line)
         source = "syslog"
-        source_ip = f"192.168.1.{random.randint(1,255)}"
+        source_ip = f"192.168.1.{random.randint(1, 255)}"
 
     # نحول الرسالة لحروف صغيرة لتفادي مشاكل الكتابة
     msg = message.lower()
@@ -37,8 +37,12 @@ def normalize_log(log_line):
         event_type = "PORT_SCAN"
         severity = "medium"
 
-    elif "login successful" in msg or "accepted password" in msg:
-        event_type = "SUCCESS_LOGIN"
+    elif (
+        "login successful" in msg
+        or "accepted password" in msg
+        or "logged in" in msg
+    ):
+        event_type = "LOGIN_SUCCESS"
         severity = "low"
 
     elif "attack" in msg:

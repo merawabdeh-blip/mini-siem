@@ -65,33 +65,22 @@ def receive_log(log: dict):
     # ==============================
     # حفظ alerts
     # ==============================
-    for alert in alerts:
-        cursor.execute(
-            """
-            INSERT INTO alerts (type, source_ip, description, severity, timestamp)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                alert.get("event_type"),
-                alert.get("source_ip"),
-                alert.get("message"),
-                alert.get("severity"),
-                alert.get("timestamp"),
-            ),
-        )
+     for alert in alerts:
+    cursor.execute(
+        """
+        INSERT INTO alerts (type, source_ip, description, severity, timestamp)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            alert.get("type"),
+            alert.get("source_ip"),
+            alert.get("details"),
+            alert.get("severity"),
+            datetime.utcnow().isoformat(),
 
-    db.commit()
-    db.close()
+        ),
 
-    return {
-        "message": "Log received",
-        "normalized": normalized,
-        "alerts": alerts,
-        "prediction": prediction
-    }
-
-
-# ==============================
+#==========================
 # عرض logs
 # ==============================
 @router.get("/")
