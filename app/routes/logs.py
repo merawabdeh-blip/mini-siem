@@ -129,4 +129,5 @@ def get_alerts():
 # ==============================
 @router.get("/dashboard")
 def dashboard():
-    return FileResponse(Path("templates/dashboard.html"))
+    dashboard_path = Path(__file__).resolve().parents[2] / "templates" / "dashboard.html"
+    return FileResponse(dashboard_path)
