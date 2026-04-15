@@ -6,15 +6,14 @@
         body {
             background: #0f172a;
             color: white;
-            font-family: Arial;
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
         }
 
         h1 {
             text-align: center;
-            margin-top: 25px;
-            margin-bottom: 25px;
+            margin: 30px 0;
         }
 
         .container {
@@ -26,84 +25,97 @@
         .box {
             flex: 1;
             background: #1e293b;
-            padding: 15px;
-            border-radius: 10px;
-            min-height: 220px;
+            padding: 20px;
+            border-radius: 12px;
+            min-height: 250px;
         }
 
         .alert {
+            margin-bottom: 14px;
             font-weight: bold;
-            margin-bottom: 12px;
             line-height: 1.5;
         }
 
-        .msg {
+        .meta {
             color: #cbd5e1;
+            font-weight: normal;
         }
     </style>
 </head>
 <body>
 
-<h1>🔥 Mini SIEM Dashboard</h1>
+    <h1>🔥 Mini SIEM Dashboard</h1>
 
-<div class="container">
-    <div class="box">
-        <h2>Logs</h2>
-        <div id="logs">Loading...</div>
+    <div class="container">
+        <div class="box">
+            <h2>Logs</h2>
+            <div id="logs">Loading...</div>
+        </div>
+
+        <div class="box">
+            <h2>Alerts 🚨</h2>
+            <h3 id="alertCount">Loading...</h3>
+            <div id="alerts">Loading...</div>
+        </div>
     </div>
 
-    <div class="box">
-        <h2>Alerts 🚨</h2>
-        <h3 id="alertCount">Loading...</h3>
-        <div id="alerts">Loading...</div>
-    </div>
-</div>
+    <script>
+        function getColor(type) {
+            const t = String(type || "").toUpperCase();
 
-<script>
-function getColor(type) {
-    if (type === "BRUTE_FORCE") return "red";
-    if (type === "PORT_SCAN") return "orange";
-    if (type === "AI_ANOMALY") return "yellow";
-    if (type === "SUSPICIOUS_LOGIN_SUCCESS") return "violet";
-    return "white";
-}
+            if (t.includes("BRUTE")) return "red";
+            if (t.includes("PORT")) return "orange";
+            if (t.includes("AI")) return "yellow";
+            if (t.includes("SUSPICIOUS")) return "violet";
 
-async function fetchData() {
-    const alertsBox = document.getElementById('alerts');
-    const logsBox = document.getElementById('logs');
-    const countBox = document.getElementById('alertCount');
-
-    try {
-        const res = await fetch('/logs/alerts');
-        const alerts = await res.json();
-
-        logsBox.innerHTML = "<p class='msg'>Live log stream disabled temporarily</p>";
-        countBox.innerText = "Total Alerts: " + alerts.length;
-
-        if (!alerts.length) {
-            alertsBox.innerHTML = "<p class='msg'>No alerts yet</p>";
-            return;
+            return "white";
         }
 
-        alertsBox.innerHTML = alerts.slice(0, 15).map((a, i) => {
-            const style = i === 0 ? "font-size:18px;" : "";
-            const text = a.description || a.details || "";
-            return `<p class="alert" style="${style} color:${getColor(a.type)};">
-                        ${a.type} - ${a.source_ip}<br>
-                        <span class="msg">${text}</span>
-                    </p>`;
-        }).join('');
-    } catch (e) {
-        logsBox.innerHTML = "<p class='msg'>Could not load logs</p>";
-        countBox.innerText = "Total Alerts: Error";
-        alertsBox.innerHTML = "<p class='msg'>Could not load alerts</p>";
-        console.log("Dashboard error:", e);
-    }
-}
+        async function fetchData() {
+            const logsBox = document.getElementById("logs");
+            const alertsBox = document.getElementById("alerts");
+            const countBox = document.getElementById("alertCount");
 
-setInterval(fetchData, 3000);
-fetchData();
-</script>
+            try {
+                const res = await fetch("/logs/alerts");
+                const alerts = await res.json();
+
+                logsBox.innerHTML = "<p class='meta'>Live log stream disabled temporarily</p>";
+                countBox.innerText = "Total Alerts: " + alerts.length;
+
+                if (!alerts || alerts.length === 0) {
+                    alertsBox.innerHTML = "<p class='meta'>No alerts yet</p>";
+                    return;
+                }
+
+                alertsBox.innerHTML = alerts.slice(0, 15).map((a, i) => {
+                    const type = a.type || "UNKNOWN";
+                    const ip = a.source_ip || "-";
+                    const description = a.description || a.details || "";
+                    const severity = a.severity || "";
+                    const timestamp = a.timestamp || "";
+                    const style = i === 0 ? "font-size:18px;" : "";
+
+                    return `
+                        <div class="alert" style="color:${getColor(type)}; ${style}">
+                            ${type} - ${ip}
+                            <div class="meta">${description}</div>
+                            <div class="meta">Severity: ${severity}</div>
+                            <div class="meta">${timestamp}</div>
+                        </div>
+                    `;
+                }).join("");
+            } catch (err) {
+                console.log("Dashboard error:", err);
+                logsBox.innerHTML = "<p class='meta'>Could not load logs</p>";
+                countBox.innerText = "Total Alerts: Error";
+                alertsBox.innerHTML = "<p class='meta'>Could not load alerts</p>";
+            }
+        }
+
+        setInterval(fetchData, 3000);
+        fetchData();
+    </script>
 
 </body>
 </html>
