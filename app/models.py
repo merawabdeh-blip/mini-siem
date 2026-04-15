@@ -23,3 +23,13 @@ class Alert(Base):
     severity = Column(String)
     details = Column(Text)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    password_hash = Column(String)
+    role = Column(String, default="viewer")
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

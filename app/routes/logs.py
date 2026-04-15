@@ -8,6 +8,9 @@ from app.utils.normalizer import normalize_log
 from app.detection_engine import run_detection
 from app.ai_analyzer import predict_log
 
+from fastapi import Depends
+from app.dependencies import require_role
+
 router = APIRouter(prefix="/logs")
 
 
@@ -15,7 +18,10 @@ router = APIRouter(prefix="/logs")
 # استقبال log جديد
 # ==============================
 @router.post("/log")
-def receive_log(log: dict):
+def receive_log(
+    log: dict,
+    current_user: dict = Depends(require_role(["analyst", "admin"]))
+):
     normalized = normalize_log(log)
 
     db_gen = get_db()
@@ -94,7 +100,7 @@ def receive_log(log: dict):
 # عرض logs
 # ==============================
 @router.get("/")
-def get_logs():
+def get_logs(current_user: dict = Depends(require_role(["analyst", "admin"]))):
     db_gen = get_db()
     db = next(db_gen)
     cursor = db.cursor()
@@ -111,7 +117,7 @@ def get_logs():
 # عرض alerts
 # ==============================
 @router.get("/alerts")
-def get_alerts():
+def get_alerts(current_user: dict = Depends(require_role(["viewer", "analyst", "admin"]))):
     db_gen = get_db()
     db = next(db_gen)
     cursor = db.cursor()
@@ -128,6 +134,5 @@ def get_alerts():
 # Dashboard
 # ==============================
 @router.get("/dashboard")
-def dashboard():
-    dashboard_path = Path(__file__).resolve().parents[2] / "templates" / "dashboard.html"
-    return FileResponse(dashboard_path)
+def dashboard(current_user: dict = Depends(require_role(["viewer", "analyst", "admin"]))):
+    return FileResponse(Path("templates/dashboard.html"))

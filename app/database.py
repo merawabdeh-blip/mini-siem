@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 DATABASE = "siem.db"
 
@@ -32,7 +33,7 @@ def init_db():
     """)
 
     # ==========================
-    # alerts table (🔥 UPDATED)
+    # alerts table
     # ==========================
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS alerts (
@@ -45,20 +46,22 @@ def init_db():
         )
     """)
 
+    # ==========================
+    # users table
+    # ==========================
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            email TEXT UNIQUE,
+            password_hash TEXT,
+            role TEXT DEFAULT 'viewer',
+            created_at TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()
-
-
-# ==========================
-# Insert Alert (🔥 UPDATED)
-# ==========================
-def insert_alert(conn, alert_type, source_ip, description, severity, timestamp):
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO alerts (type, source_ip, description, severity, timestamp)
-        VALUES (?, ?, ?, ?, ?)
-    """, (alert_type, source_ip, description, severity, timestamp))
-    conn.commit()
 
 
 def insert_log(conn, source, source_ip, event_type, message, severity, timestamp):
@@ -68,3 +71,27 @@ def insert_log(conn, source, source_ip, event_type, message, severity, timestamp
         VALUES (?, ?, ?, ?, ?, ?)
     """, (source, source_ip, event_type, message, severity, timestamp))
     conn.commit()
+
+
+def insert_alert(conn, alert_type, source_ip, description, severity, timestamp):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO alerts (type, source_ip, description, severity, timestamp)
+        VALUES (?, ?, ?, ?, ?)
+    """, (alert_type, source_ip, description, severity, timestamp))
+    conn.commit()
+
+
+def insert_user(conn, username, email, password_hash, role):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO users (username, email, password_hash, role, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    """, (username, email, password_hash, role, datetime.utcnow().isoformat()))
+    conn.commit()
+
+
+def get_user_by_username(conn, username):
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+    return cursor.fetchone()
