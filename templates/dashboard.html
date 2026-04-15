@@ -66,14 +66,8 @@ function getColor(type) {
 }
 
 async function fetchData() {
-    let logs = [];
+    async function fetchData() {
     let alerts = [];
-
-    try {
-        logs = await fetch('/logs').then(r => r.json());
-    } catch (e) {
-        console.log("Logs error:", e);
-    }
 
     try {
         alerts = await fetch('/logs/alerts').then(r => r.json());
@@ -81,19 +75,14 @@ async function fetchData() {
         console.log("Alerts error:", e);
     }
 
-    // Logs مع timestamp
     document.getElementById('logs').innerHTML =
-        logs.map(l => 
-            `<p>${l.timestamp} - ${l.source_ip} - ${l.event_type}</p>`
-        ).join('');
+        "<p>Live log stream disabled temporarily</p>";
 
-    // عدد alerts
     document.getElementById('alertCount').innerText =
         "Total Alerts: " + alerts.length;
 
-    // Alerts مع ألوان + highlight لأول alert
     document.getElementById('alerts').innerHTML =
-        alerts.map((a, i) => {
+        alerts.slice(0, 15).map((a, i) => {
             let style = i === 0 ? "font-weight:bold; font-size:18px;" : "";
             return `<p class="alert" style="${style}; color:${getColor(a.type)}">
                 ${a.type} - ${a.source_ip}<br>
@@ -102,7 +91,6 @@ async function fetchData() {
         }).join('');
 }
 
-// تحديث كل 3 ثواني
 setInterval(fetchData, 3000);
 fetchData();
 </script>
