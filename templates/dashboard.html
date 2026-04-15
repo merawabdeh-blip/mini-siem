@@ -64,8 +64,20 @@ function getColor(type) {
 }
 
 async function fetchData() {
-    let logs = await fetch('/logs').then(r => r.json());
-    let alerts = await fetch('/logs/alerts').then(r => r.json());
+    let logs = [];
+    let alerts = [];
+
+    try {
+        logs = await fetch('/logs').then(r => r.json());
+    } catch (e) {
+        console.log("Logs error:", e);
+    }
+
+    try {
+        alerts = await fetch('/logs/alerts').then(r => r.json());
+    } catch (e) {
+        console.log("Alerts error:", e);
+    }
 
     // Logs مع timestamp
     document.getElementById('logs').innerHTML =
