@@ -60,6 +60,8 @@
 function getColor(type) {
     if (type === "BRUTE_FORCE") return "red";
     if (type === "PORT_SCAN") return "orange";
+    if (type === "AI_ANOMALY") return "yellow";
+    if (type === "SUSPICIOUS_LOGIN_SUCCESS") return "purple";
     return "white";
 }
 
@@ -94,7 +96,8 @@ async function fetchData() {
         alerts.map((a, i) => {
             let style = i === 0 ? "font-weight:bold; font-size:18px;" : "";
             return `<p class="alert" style="${style}; color:${getColor(a.type)}">
-                ${a.type} - ${a.source_ip}
+                ${a.type} - ${a.source_ip}<br>
+                ${a.description || a.details || ""}
             </p>`;
         }).join('');
 }
