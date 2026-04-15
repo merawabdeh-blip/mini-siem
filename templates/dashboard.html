@@ -7,10 +7,14 @@
             background: #0f172a;
             color: white;
             font-family: Arial;
+            margin: 0;
+            padding: 0;
         }
 
         h1 {
             text-align: center;
+            margin-top: 25px;
+            margin-bottom: 25px;
         }
 
         .container {
@@ -24,14 +28,17 @@
             background: #1e293b;
             padding: 15px;
             border-radius: 10px;
+            min-height: 220px;
         }
 
         .alert {
             font-weight: bold;
+            margin-bottom: 12px;
+            line-height: 1.5;
         }
 
-        .highlight {
-            font-size: 18px;
+        .msg {
+            color: #cbd5e1;
         }
     </style>
 </head>
@@ -40,20 +47,16 @@
 <h1>🔥 Mini SIEM Dashboard</h1>
 
 <div class="container">
-
-    <!-- Logs -->
     <div class="box">
         <h2>Logs</h2>
-        <div id="logs"></div>
+        <div id="logs">Loading...</div>
     </div>
 
-    <!-- Alerts -->
     <div class="box">
         <h2>Alerts 🚨</h2>
-        <h3 id="alertCount"></h3>
-        <div id="alerts"></div>
+        <h3 id="alertCount">Loading...</h3>
+        <div id="alerts">Loading...</div>
     </div>
-
 </div>
 
 <script>
@@ -61,34 +64,41 @@ function getColor(type) {
     if (type === "BRUTE_FORCE") return "red";
     if (type === "PORT_SCAN") return "orange";
     if (type === "AI_ANOMALY") return "yellow";
-    if (type === "SUSPICIOUS_LOGIN_SUCCESS") return "purple";
+    if (type === "SUSPICIOUS_LOGIN_SUCCESS") return "violet";
     return "white";
 }
 
 async function fetchData() {
-    async function fetchData() {
-    let alerts = [];
+    const alertsBox = document.getElementById('alerts');
+    const logsBox = document.getElementById('logs');
+    const countBox = document.getElementById('alertCount');
 
     try {
-        alerts = await fetch('/logs/alerts').then(r => r.json());
-    } catch (e) {
-        console.log("Alerts error:", e);
-    }
+        const res = await fetch('/logs/alerts');
+        const alerts = await res.json();
 
-    document.getElementById('logs').innerHTML =
-        "<p>Live log stream disabled temporarily</p>";
+        logsBox.innerHTML = "<p class='msg'>Live log stream disabled temporarily</p>";
+        countBox.innerText = "Total Alerts: " + alerts.length;
 
-    document.getElementById('alertCount').innerText =
-        "Total Alerts: " + alerts.length;
+        if (!alerts.length) {
+            alertsBox.innerHTML = "<p class='msg'>No alerts yet</p>";
+            return;
+        }
 
-    document.getElementById('alerts').innerHTML =
-        alerts.slice(0, 15).map((a, i) => {
-            let style = i === 0 ? "font-weight:bold; font-size:18px;" : "";
-            return `<p class="alert" style="${style}; color:${getColor(a.type)}">
-                ${a.type} - ${a.source_ip}<br>
-                ${a.description || a.details || ""}
-            </p>`;
+        alertsBox.innerHTML = alerts.slice(0, 15).map((a, i) => {
+            const style = i === 0 ? "font-size:18px;" : "";
+            const text = a.description || a.details || "";
+            return `<p class="alert" style="${style} color:${getColor(a.type)};">
+                        ${a.type} - ${a.source_ip}<br>
+                        <span class="msg">${text}</span>
+                    </p>`;
         }).join('');
+    } catch (e) {
+        logsBox.innerHTML = "<p class='msg'>Could not load logs</p>";
+        countBox.innerText = "Total Alerts: Error";
+        alertsBox.innerHTML = "<p class='msg'>Could not load alerts</p>";
+        console.log("Dashboard error:", e);
+    }
 }
 
 setInterval(fetchData, 3000);
