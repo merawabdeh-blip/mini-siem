@@ -3,24 +3,16 @@ from app.database import init_db
 from app.routes.logs import router as logs_router
 from app.routes.auth import router as auth_router
 
-
 app = FastAPI(title="Mini SIEM")
 
-# -------------------------
-# Initialize Database
-# -------------------------
+# Initialize database
 init_db()
 
-# -------------------------
-# Include Routes
-# -------------------------
+# Include routers
 app.include_router(logs_router)
 app.include_router(auth_router)
 
-# -------------------------
-# Root Endpoint
-# -------------------------
+# Root endpoint
 @app.get("/")
 def root():
     return {"message": "Mini SIEM is running"}
-

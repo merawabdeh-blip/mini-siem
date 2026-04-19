@@ -5,6 +5,12 @@ import requests
 WAZUH_ALERTS = "/var/ossec/logs/alerts/alerts.json"
 SIEM_URL = "http://127.0.0.1:8000/logs/log"
 
+TOKEN = "YOUR_TOKEN_HERE"
+HEADERS = {
+    "Authorization": f"Bearer {TOKEN}",
+    "Content-Type": "application/json"
+}
+
 
 def send_to_siem(alert: dict) -> None:
     rule = alert.get("rule", {})
@@ -20,8 +26,8 @@ def send_to_siem(alert: dict) -> None:
     }
 
     try:
-        response = requests.post(SIEM_URL, json=payload, timeout=5)
-        print(f"Sent to SIEM: {response.status_code} | {payload['event_type']}")
+        response = requests.post(SIEM_URL, json=payload, headers=HEADERS, timeout=5)
+        print(f"Sent to SIEM: {response.status_code} | {payload['event_type']} | {response.text}")
     except Exception as e:
         print("Error sending to SIEM:", e)
 
