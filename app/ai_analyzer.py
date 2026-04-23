@@ -1,30 +1,31 @@
-import joblib
-import pandas as pd
-
-model, features = joblib.load("ml/model.pkl")
+from ml.predict import predict_log
 
 
-def predict_log(log):
-    try:
-        df = pd.DataFrame([log])
-        df = df.reindex(columns=features, fill_value=0)
+def analyze_log_with_ai(normalized_log):
+    result = predict_log(normalized_log)
 
-        score = model.decision_function(df)[0]
-        prediction = model.predict(df)[0]
+    score = result.get("score")
+    event_type = str(normalized_log.get("event_type", "UNKNOWN")).upper()
 
-        if prediction == -1:
-            label = "ANOMALY"
+    if score is None:
+        label = "ERROR"
+    else:
+        if score < -0.18:
+            label = "CRITICAL"
+        elif score < -0.08:
+            label = "ATTACK"
+        elif score < -0.03:
+            label = "SUSPICIOUS"
         else:
             label = "NORMAL"
 
-        return {
-            "label": label,
-            "score": float(score)
-        }
+        # تقليل false positives للأحداث الطبيعية
+        if event_type == "SUCCESS_LOGIN" and score > -0.12:
+            label = "NORMAL"
 
-    except Exception as e:
-        print("AI error:", e)
-        return {
-            "label": "UNKNOWN",
-            "score": None
-        }
+    print(f"ML RESULT: {label} | score={score}")
+
+    return {
+        "label": label,
+        "score": score
+    }

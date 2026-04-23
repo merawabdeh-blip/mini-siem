@@ -1,11 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from app.auth import hash_password, verify_password, create_access_token
 from app.database import get_db, insert_user, get_user_by_username
-
-from fastapi import APIRouter, HTTPException, Depends
 from app.dependencies import get_current_user
+from app.audit import log_audit_event
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -65,17 +64,18 @@ def login(user: LoginRequest):
 
     conn.close()
 
+    log_audit_event(db_user["username"], "LOGIN_SUCCESS", "/auth/login")
+
     return {
         "access_token": token,
         "token_type": "bearer",
         "role": db_user["role"]
     }
+
+
 @router.get("/me")
 def me(current_user: dict = Depends(get_current_user)):
     return {
         "username": current_user.get("sub"),
         "role": current_user.get("role")
     }
-
-
-

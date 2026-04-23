@@ -1,121 +1,477 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mini SIEM Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
+            margin: 0;
+            font-family: Arial, sans-serif;
             background: #0f172a;
             color: white;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
         }
 
-        h1 {
+        .header {
+            padding: 24px;
             text-align: center;
-            margin: 30px 0;
+            border-bottom: 1px solid #334155;
+            background: #111827;
         }
 
-        .container {
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+        }
+
+        .header p {
+            margin-top: 10px;
+            color: #cbd5e1;
+        }
+
+        .token-bar {
             display: flex;
-            gap: 20px;
-            padding: 20px;
-        }
-
-        .box {
-            flex: 1;
+            gap: 10px;
+            padding: 16px 24px;
             background: #1e293b;
-            padding: 20px;
-            border-radius: 12px;
-            min-height: 250px;
+            border-bottom: 1px solid #334155;
+            flex-wrap: wrap;
         }
 
-        .alert {
-            margin-bottom: 14px;
+        .token-bar input {
+            flex: 1;
+            min-width: 280px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: white;
+        }
+
+        .token-bar button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
             font-weight: bold;
-            line-height: 1.5;
+        }
+
+        .token-bar button:hover {
+            background: #1d4ed8;
+        }
+
+        .main {
+            padding: 20px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: #1e293b;
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .card h3 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            color: #cbd5e1;
+        }
+
+        .card .value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: #1e293b;
+            border-radius: 14px;
+            padding: 18px;
+            min-height: 300px;
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+        }
+
+        .entry {
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+
+        .entry strong {
+            display: block;
+            margin-bottom: 6px;
         }
 
         .meta {
             color: #cbd5e1;
-            font-weight: normal;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 6px;
+        }
+
+        .high { background: #7f1d1d; color: #fecaca; }
+        .medium { background: #78350f; color: #fde68a; }
+        .low { background: #064e3b; color: #bbf7d0; }
+        .critical { background: #450a0a; color: #fca5a5; }
+
+        .type-list div,
+        .ip-list div {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #0f172a;
+            border-radius: 10px;
+            border: 1px solid #334155;
+        }
+
+        .chart-wrap {
+            height: 320px;
+            position: relative;
+        }
+
+        .muted {
+            color: #94a3b8;
+        }
+
+        .footer-note {
+            margin-top: 20px;
+            color: #94a3b8;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="header">
+        <h1>AI-Enhanced Mini SIEM Dashboard</h1>
+        <p>Real-time security monitoring, alert visualization, and AI-assisted suspicious activity detection</p>
+    </div>
 
-    <h1>TEST 123</h1>
+    <div class="token-bar">
+        <input type="text" id="tokenInput" placeholder="Paste Bearer token here" />
+        <button onclick="saveToken()">Save Token</button>
+        <button onclick="fetchDashboardData()">Refresh</button>
+    </div>
 
-    <div class="container">
-        <div class="box">
-            <h2>Logs</h2>
-            <div id="logs">Loading...</div>
+    <div class="main">
+        <div class="stats">
+            <div class="card">
+                <h3>Total Logs</h3>
+                <div class="value" id="totalLogs">-</div>
+            </div>
+            <div class="card">
+                <h3>Total Alerts</h3>
+                <div class="value" id="totalAlerts">-</div>
+            </div>
+            <div class="card">
+                <h3>Most Frequent Alert</h3>
+                <div class="value" id="topAlertType">-</div>
+            </div>
+            <div class="card">
+                <h3>Top Source IP</h3>
+                <div class="value" id="topIP">-</div>
+            </div>
         </div>
 
-        <div class="box">
-            <h2>Alerts 🚨</h2>
-            <h3 id="alertCount">Loading...</h3>
-            <div id="alerts">Loading...</div>
+        <div class="grid">
+            <div class="panel">
+                <h2>Recent Alerts</h2>
+                <div id="alertsBox"><span class="muted">Loading alerts...</span></div>
+            </div>
+
+            <div class="panel">
+                <h2>Recent Logs</h2>
+                <div id="logsBox"><span class="muted">Loading logs...</span></div>
+            </div>
+        </div>
+
+        <div class="grid" style="margin-top: 20px;">
+            <div class="panel">
+                <h2>Attack Types Summary</h2>
+                <div id="typeSummary" class="type-list"><span class="muted">Loading summary...</span></div>
+            </div>
+
+            <div class="panel">
+                <h2>Top Source IPs</h2>
+                <div id="ipSummary" class="ip-list"><span class="muted">Loading IP summary...</span></div>
+            </div>
+        </div>
+
+        <div class="grid" style="margin-top: 20px;">
+            <div class="panel">
+                <h2>Alert Types Chart</h2>
+                <div class="chart-wrap">
+                    <canvas id="alertTypesChart"></canvas>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Severity Distribution</h2>
+                <div class="chart-wrap">
+                    <canvas id="severityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-note">
+            Dashboard auto-refreshes every 5 seconds.
         </div>
     </div>
 
     <script>
-        function getColor(type) {
-            const t = String(type || "").toUpperCase();
+        let alertTypesChart = null;
+        let severityChart = null;
 
-            if (t.includes("BRUTE")) return "red";
-            if (t.includes("PORT")) return "orange";
-            if (t.includes("AI")) return "yellow";
-            if (t.includes("SUSPICIOUS")) return "violet";
-
-            return "white";
+        function saveToken() {
+            const token = document.getElementById("tokenInput").value.trim();
+            localStorage.setItem("siem_token", token);
+            alert("Token saved successfully.");
+            fetchDashboardData();
         }
 
-        async function fetchData() {
-            const logsBox = document.getElementById("logs");
-            const alertsBox = document.getElementById("alerts");
-            const countBox = document.getElementById("alertCount");
+        function getToken() {
+            return localStorage.getItem("siem_token") || "";
+        }
 
-            try {
-                const res = await fetch("/logs/alerts");
-                const alerts = await res.json();
+        function getHeaders() {
+            const token = getToken();
+            return {
+                "Authorization": "Bearer " + token
+            };
+        }
 
-                logsBox.innerHTML = "<p class='meta'>Live log stream disabled temporarily</p>";
-                countBox.innerText = "Total Alerts: " + alerts.length;
+        function severityTag(severity) {
+            const sev = String(severity || "low").toLowerCase();
+            return `<span class="tag ${sev}">${sev.toUpperCase()}</span>`;
+        }
 
-                if (!alerts || alerts.length === 0) {
-                    alertsBox.innerHTML = "<p class='meta'>No alerts yet</p>";
-                    return;
-                }
+        function countByKey(items, key) {
+            const counts = {};
+            for (const item of items) {
+                const value = item[key] || "UNKNOWN";
+                counts[value] = (counts[value] || 0) + 1;
+            }
+            return counts;
+        }
 
-                alertsBox.innerHTML = alerts.slice(0, 15).map((a, i) => {
-                    const type = a.type || "UNKNOWN";
-                    const ip = a.source_ip || "-";
-                    const description = a.description || a.details || "";
-                    const severity = a.severity || "";
-                    const timestamp = a.timestamp || "";
-                    const style = i === 0 ? "font-size:18px;" : "";
+        function getTopEntry(countsObj) {
+            const entries = Object.entries(countsObj);
+            if (!entries.length) return ["-", 0];
+            entries.sort((a, b) => b[1] - a[1]);
+            return entries[0];
+        }
 
-                    return `
-                        <div class="alert" style="color:${getColor(type)}; ${style}">
-                            ${type} - ${ip}
-                            <div class="meta">${description}</div>
-                            <div class="meta">Severity: ${severity}</div>
-                            <div class="meta">${timestamp}</div>
-                        </div>
-                    `;
-                }).join("");
-            } catch (err) {
-                console.log("Dashboard error:", err);
-                logsBox.innerHTML = "<p class='meta'>Could not load logs</p>";
-                countBox.innerText = "Total Alerts: Error";
-                alertsBox.innerHTML = "<p class='meta'>Could not load alerts</p>";
+        function renderSummary(containerId, countsObj, labelName) {
+            const box = document.getElementById(containerId);
+            const entries = Object.entries(countsObj).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+            if (!entries.length) {
+                box.innerHTML = `<span class="muted">No ${labelName} available</span>`;
+                return;
+            }
+
+            box.innerHTML = entries.map(([name, count]) => `
+                <div>
+                    <strong>${name}</strong>
+                    <div class="meta">Count: ${count}</div>
+                </div>
+            `).join("");
+        }
+
+        function destroyCharts() {
+            if (alertTypesChart) {
+                alertTypesChart.destroy();
+                alertTypesChart = null;
+            }
+            if (severityChart) {
+                severityChart.destroy();
+                severityChart = null;
             }
         }
 
-        setInterval(fetchData, 3000);
-        fetchData();
-    </script>
+        function renderCharts(alertTypeCounts, severityCounts) {
+            destroyCharts();
 
+            const alertCtx = document.getElementById("alertTypesChart").getContext("2d");
+            const severityCtx = document.getElementById("severityChart").getContext("2d");
+
+            const alertLabels = Object.keys(alertTypeCounts);
+            const alertValues = Object.values(alertTypeCounts);
+
+            const severityLabels = Object.keys(severityCounts);
+            const severityValues = Object.values(severityCounts);
+
+            alertTypesChart = new Chart(alertCtx, {
+                type: "bar",
+                data: {
+                    labels: alertLabels,
+                    datasets: [{
+                        label: "Alert Count",
+                        data: alertValues
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: "white" }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: "white" },
+                            grid: { color: "#334155" }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: "white" },
+                            grid: { color: "#334155" }
+                        }
+                    }
+                }
+            });
+
+            severityChart = new Chart(severityCtx, {
+                type: "doughnut",
+                data: {
+                    labels: severityLabels,
+                    datasets: [{
+                        data: severityValues
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: "white" }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function fetchDashboardData() {
+            const logsBox = document.getElementById("logsBox");
+            const alertsBox = document.getElementById("alertsBox");
+
+            try {
+                const [logsRes, alertsRes] = await Promise.all([
+                    fetch("/logs/", { headers: getHeaders() }),
+                    fetch("/logs/alerts", { headers: getHeaders() })
+                ]);
+
+                if (!logsRes.ok || !alertsRes.ok) {
+                    throw new Error("Unauthorized or failed to fetch data. Make sure the token is valid.");
+                }
+
+                const logs = await logsRes.json();
+                const alerts = await alertsRes.json();
+
+                document.getElementById("totalLogs").innerText = logs.length;
+                document.getElementById("totalAlerts").innerText = alerts.length;
+
+                const alertTypeCounts = countByKey(alerts, "type");
+                const ipCounts = countByKey(alerts, "source_ip");
+                const severityCounts = countByKey(alerts, "severity");
+
+                const [topAlertType] = getTopEntry(alertTypeCounts);
+                const [topIP] = getTopEntry(ipCounts);
+
+                document.getElementById("topAlertType").innerText = topAlertType;
+                document.getElementById("topIP").innerText = topIP;
+
+                renderSummary("typeSummary", alertTypeCounts, "types");
+                renderSummary("ipSummary", ipCounts, "IPs");
+                renderCharts(alertTypeCounts, severityCounts);
+
+                if (!alerts.length) {
+                    alertsBox.innerHTML = `<span class="muted">No alerts yet</span>`;
+                } else {
+                    alertsBox.innerHTML = alerts.slice(0, 12).map(alert => `
+                        <div class="entry">
+                            <strong>${alert.type || "UNKNOWN"} - ${alert.source_ip || "-"}</strong>
+                            <div class="meta">${severityTag(alert.severity)} ${alert.timestamp || ""}</div>
+                            <div class="meta">${alert.description || "No description"}</div>
+                        </div>
+                    `).join("");
+                }
+
+                if (!logs.length) {
+                    logsBox.innerHTML = `<span class="muted">No logs yet</span>`;
+                } else {
+                    logsBox.innerHTML = logs.slice(0, 12).map(log => `
+                        <div class="entry">
+                            <strong>${log.event_type || "UNKNOWN"} - ${log.source || "-"}</strong>
+                            <div class="meta">${severityTag(log.severity)} ${log.timestamp || ""}</div>
+                            <div class="meta">IP: ${log.source_ip || "-"}</div>
+                            <div class="meta">${log.message || ""}</div>
+                        </div>
+                    `).join("");
+                }
+
+            } catch (error) {
+                destroyCharts();
+                logsBox.innerHTML = `<span class="muted">Could not load logs</span>`;
+                alertsBox.innerHTML = `<span class="muted">Could not load alerts</span>`;
+                document.getElementById("totalLogs").innerText = "Error";
+                document.getElementById("totalAlerts").innerText = "Error";
+                document.getElementById("topAlertType").innerText = "-";
+                document.getElementById("topIP").innerText = "-";
+                document.getElementById("typeSummary").innerHTML = `<span class="muted">${error.message}</span>`;
+                document.getElementById("ipSummary").innerHTML = `<span class="muted">${error.message}</span>`;
+            }
+        }
+
+        window.onload = () => {
+            const savedToken = getToken();
+            if (savedToken) {
+                document.getElementById("tokenInput").value = savedToken;
+            }
+            fetchDashboardData();
+            setInterval(fetchDashboardData, 5000);
+        };
+    </script>
 </body>
 </html>

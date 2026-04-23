@@ -60,6 +60,19 @@ def init_db():
         )
     """)
 
+    # ==========================
+    # audit_logs table
+    # ==========================
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            action TEXT,
+            endpoint TEXT,
+            timestamp TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -95,3 +108,12 @@ def get_user_by_username(conn, username):
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
     return cursor.fetchone()
+
+
+def insert_audit_log(conn, username, action, endpoint):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO audit_logs (username, action, endpoint, timestamp)
+        VALUES (?, ?, ?, ?)
+    """, (username, action, endpoint, datetime.utcnow().isoformat()))
+    conn.commit()
