@@ -8,3 +8,8 @@ __pycache__/
 dataset/
 *.csv
 wazuh-install-files.tar
+cicids2017_sample.csv
+cicids2017_attacks.csv
+*.db
+*.zip
+__pycache__/
