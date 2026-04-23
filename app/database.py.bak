@@ -28,11 +28,10 @@ def init_db():
             event_type TEXT,
             message TEXT,
             severity TEXT,
-            timestamp TEXT,
-            message_hash TEXT,
-            user_label TEXT
-       )
-   """) 
+            timestamp TEXT
+        )
+    """)
+
     # ==========================
     # alerts table
     # ==========================

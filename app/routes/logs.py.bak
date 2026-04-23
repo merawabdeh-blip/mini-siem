@@ -2,19 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from pathlib import Path
 from datetime import datetime
-from io import StringIO, BytesIO
+from io import StringIO
 import csv
-import shutil
-import hashlib
-
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
 
 from app.database import get_db
-from app.dependencies import require_role
 from app.utils.normalizer import normalize_log
 from app.detection_engine import run_detection
 from app.ai_analyzer import analyze_log_with_ai
+from app.dependencies import require_role
 from app.audit import log_audit_event
 from app.validators import validate_log_input
 
@@ -29,7 +24,6 @@ def calculate_risk_score(event_type: str, prediction: str) -> int:
         "PRIVILEGE_ESCALATION": 90,
         "SUCCESS_LOGIN": 10,
         "UNKNOWN": 20,
-        "ATTACK": 30,
     }
 
     score = base_scores.get(str(event_type).upper(), 20)
@@ -72,11 +66,9 @@ def build_logs_query(
         params.append(source_ip)
 
     if q:
-        conditions.append(
-            "(LOWER(message) LIKE LOWER(?) OR LOWER(event_type) LIKE LOWER(?) OR LOWER(source) LIKE LOWER(?) OR LOWER(source_ip) LIKE LOWER(?))"
-        )
+        conditions.append("(LOWER(message) LIKE LOWER(?) OR LOWER(event_type) LIKE LOWER(?) OR LOWER(source) LIKE LOWER(?))")
         keyword = f"%{q}%"
-        params.extend([keyword, keyword, keyword, keyword])
+        params.extend([keyword, keyword, keyword])
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
@@ -108,9 +100,7 @@ def build_alerts_query(
         params.append(source_ip)
 
     if q:
-        conditions.append(
-            "(LOWER(description) LIKE LOWER(?) OR LOWER(type) LIKE LOWER(?) OR LOWER(source_ip) LIKE LOWER(?))"
-        )
+        conditions.append("(LOWER(description) LIKE LOWER(?) OR LOWER(type) LIKE LOWER(?) OR LOWER(source_ip) LIKE LOWER(?))")
         keyword = f"%{q}%"
         params.extend([keyword, keyword, keyword])
 
@@ -146,13 +136,12 @@ def receive_log(
         log["source_ip"] = validation_result["source_ip"]
 
     normalized = normalize_log(log)
-    normalized["timestamp"] = datetime.utcnow().isoformat()
-
-    message_hash = hashlib.sha256(normalized["message"].encode()).hexdigest()
 
     db_gen = get_db()
     db = next(db_gen)
     cursor = db.cursor()
+
+    normalized["timestamp"] = datetime.utcnow().isoformat()
 
     try:
         ai_result = analyze_log_with_ai(normalized)
@@ -168,8 +157,8 @@ def receive_log(
 
     cursor.execute(
         """
-        INSERT INTO logs (source, source_ip, event_type, message, severity, timestamp, message_hash, user_label)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO logs (source, source_ip, event_type, message, severity, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
             normalized["source"],
@@ -178,8 +167,6 @@ def receive_log(
             normalized["message"],
             normalized["severity"],
             normalized["timestamp"],
-            message_hash,
-            None,
         ),
     )
 
@@ -196,7 +183,7 @@ def receive_log(
         })
 
     elif prediction == "SUSPICIOUS" and normalized["event_type"] in [
-        "BRUTE_FORCE", "PORT_SCAN", "PRIVILEGE_ESCALATION", "FAILED_LOGIN", "ATTACK"
+        "BRUTE_FORCE", "PORT_SCAN", "PRIVILEGE_ESCALATION", "FAILED_LOGIN"
     ]:
         alerts.append({
             "type": "AI_SUSPICIOUS",
@@ -250,15 +237,7 @@ def get_logs(
     query, params = build_logs_query(source, severity, event_type, source_ip, q)
     cursor.execute(query, params)
     rows = cursor.fetchall()
-
-    logs = []
-    for row in rows:
-        item = dict(row)
-        item["risk_score"] = calculate_risk_score(
-            item.get("event_type", "UNKNOWN"),
-            "ATTACK" if str(item.get("severity", "")).lower() in ["high", "critical"] else "UNKNOWN"
-        )
-        logs.append(item)
+    logs = [dict(row) for row in rows]
 
     db.close()
     return logs
@@ -307,7 +286,7 @@ def export_logs_csv(
     rows = [dict(row) for row in cursor.fetchall()]
     db.close()
 
-    fieldnames = ["id", "source", "source_ip", "event_type", "message", "severity", "timestamp", "message_hash", "user_label"]
+    fieldnames = ["id", "source", "source_ip", "event_type", "message", "severity", "timestamp"]
     output = rows_to_csv(rows, fieldnames)
 
     return StreamingResponse(
@@ -346,57 +325,6 @@ def export_alerts_csv(
     )
 
 
-@router.get("/export/pdf")
-def export_logs_pdf(
-    source: str | None = Query(default=None),
-    severity: str | None = Query(default=None),
-    event_type: str | None = Query(default=None),
-    source_ip: str | None = Query(default=None),
-    q: str | None = Query(default=None),
-    current_user: dict = Depends(require_role(["analyst", "admin"]))
-):
-    log_audit_event(current_user["sub"], "EXPORT_LOGS_PDF", "/logs/export/pdf")
-
-    db_gen = get_db()
-    db = next(db_gen)
-    cursor = db.cursor()
-
-    query, params = build_logs_query(source, severity, event_type, source_ip, q)
-    cursor.execute(query, params)
-    rows = [dict(row) for row in cursor.fetchall()]
-    db.close()
-
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer)
-    styles = getSampleStyleSheet()
-
-    content = [Paragraph("Mini SIEM Logs Report", styles["Title"]), Spacer(1, 12)]
-
-    for log in rows:
-        text = (
-            f"ID: {log.get('id', '-')}"
-            f"<br/>Timestamp: {log.get('timestamp', '-')}"
-            f"<br/>Source: {log.get('source', '-')}"
-            f"<br/>Source IP: {log.get('source_ip', '-')}"
-            f"<br/>Event Type: {log.get('event_type', '-')}"
-            f"<br/>Severity: {log.get('severity', '-')}"
-            f"<br/>User Label: {log.get('user_label', '-')}"
-            f"<br/>Message Hash: {log.get('message_hash', '-')}"
-            f"<br/>Message: {log.get('message', '-')}"
-        )
-        content.append(Paragraph(text, styles["Normal"]))
-        content.append(Spacer(1, 10))
-
-    doc.build(content)
-    buffer.seek(0)
-
-    return StreamingResponse(
-        buffer,
-        media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=logs_report.pdf"}
-    )
-
-
 @router.get("/model-metrics")
 def get_model_metrics(current_user: dict = Depends(require_role(["viewer", "analyst", "admin"]))):
     log_audit_event(current_user["sub"], "VIEW_MODEL_METRICS", "/logs/model-metrics")
@@ -413,46 +341,6 @@ def get_model_metrics(current_user: dict = Depends(require_role(["viewer", "anal
     }
 
     return metrics
-
-
-@router.post("/backup")
-def backup_db(current_user: dict = Depends(require_role(["admin"]))):
-    log_audit_event(current_user["sub"], "BACKUP_DB", "/logs/backup")
-
-    backup_filename = f"backup_siem_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.db"
-    shutil.copy("siem.db", backup_filename)
-
-    return {
-        "message": "Backup created successfully",
-        "backup_file": backup_filename
-    }
-
-
-@router.post("/label")
-def label_log(
-    log_id: int = Query(...),
-    label: str = Query(...),
-    current_user: dict = Depends(require_role(["admin"]))
-):
-    log_audit_event(current_user["sub"], "LABEL_LOG", "/logs/label")
-
-    db_gen = get_db()
-    db = next(db_gen)
-    cursor = db.cursor()
-
-    cursor.execute("UPDATE logs SET user_label = ? WHERE id = ?", (label.upper(), log_id))
-    db.commit()
-
-    if cursor.rowcount == 0:
-        db.close()
-        raise HTTPException(status_code=404, detail="Log not found")
-
-    db.close()
-    return {
-        "message": "Log labeled successfully",
-        "log_id": log_id,
-        "label": label.upper()
-    }
 
 
 @router.get("/dashboard")

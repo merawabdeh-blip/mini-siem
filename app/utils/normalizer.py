@@ -29,12 +29,14 @@ def detect_source(log_line, message: str) -> str:
         return "auth"
     if "nginx" in msg or "apache" in msg or "http" in msg or "web" in msg:
         return "web"
-    if "port scan" in msg or "nmap" in msg or "network" in msg:
+    if "port scan" in msg or "port_scan" in msg or "portscan" in msg or "nmap" in msg or "network" in msg:
         return "network"
     if "kernel" in msg or "systemd" in msg or "sudo" in msg:
         return "system"
     if "wazuh" in msg:
         return "wazuh"
+    if "dataset" in msg:
+        return "dataset"
 
     return "api" if isinstance(log_line, dict) else "syslog"
 
@@ -47,6 +49,28 @@ def detect_event_type(message: str, source: str) -> str:
 
     if msg.isdigit():
         return "NOISE"
+
+    # Dataset-aware mapping
+    if "benign" in msg:
+        return "NORMAL"
+
+    if "dos" in msg or "ddos" in msg:
+        return "DOS"
+
+    if "portscan" in msg or "port scan" in msg or "port_scan" in msg:
+        return "PORT_SCAN"
+
+    if "bot" in msg:
+        return "BOTNET"
+
+    if "brute" in msg or "brute_force" in msg:
+        return "BRUTE_FORCE"
+
+    if "infiltration" in msg:
+        return "INFILTRATION"
+
+    if "web attack" in msg:
+        return "WEB_ATTACK"
 
     if source == "system":
         if "sudo session opened" in msg or "session opened for root" in msg:
@@ -61,6 +85,7 @@ def detect_event_type(message: str, source: str) -> str:
         or "invalid password" in msg
         or "login failed" in msg
         or "failed login" in msg
+        or "failed_login" in msg
     ):
         return "FAILED_LOGIN"
 
@@ -68,12 +93,14 @@ def detect_event_type(message: str, source: str) -> str:
         "multiple login attempts" in msg
         or "brute force" in msg
         or "too many login attempts" in msg
+        or "brute_force" in msg
     ):
         return "BRUTE_FORCE"
 
     if (
         "port scan" in msg
         or "port_scan" in msg
+        or "portscan" in msg
         or "nmap" in msg
         or "scan detected" in msg
     ):
@@ -107,13 +134,23 @@ def detect_event_type(message: str, source: str) -> str:
 def detect_severity(event_type: str, source: str, message: str) -> str:
     msg = (message or "").lower()
 
-    if event_type in ["BRUTE_FORCE", "PORT_SCAN", "MALWARE", "ATTACK", "PRIVILEGE_ESCALATION"]:
+    if event_type in [
+        "BRUTE_FORCE",
+        "PORT_SCAN",
+        "MALWARE",
+        "ATTACK",
+        "PRIVILEGE_ESCALATION",
+        "DOS",
+        "BOTNET",
+        "INFILTRATION",
+        "WEB_ATTACK",
+    ]:
         return "high"
 
     if event_type == "FAILED_LOGIN":
         return "medium"
 
-    if event_type in ["SUCCESS_LOGIN", "SYSTEM_ACTIVITY"]:
+    if event_type in ["SUCCESS_LOGIN", "SYSTEM_ACTIVITY", "NORMAL"]:
         return "low"
 
     if event_type in ["EMPTY_LOG", "NOISE", "UNKNOWN"]:
@@ -151,9 +188,7 @@ def normalize_log(log_line):
             or extract_ip(message)
         ).strip()
 
-        event_type = str(log_line.get("event_type") or "").strip()
-        if not event_type:
-            event_type = detect_event_type(message, source)
+        event_type = detect_event_type(message, source)
 
         severity = str(log_line.get("severity") or "").strip().lower()
         if not severity:

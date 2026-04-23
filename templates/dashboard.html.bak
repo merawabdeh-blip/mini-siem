@@ -183,7 +183,7 @@
 <body>
     <div class="header">
         <h1>AI-Enhanced Mini SIEM Dashboard</h1>
-        <p>Real-time security monitoring, alert visualization, AI-assisted detection, filtering, reporting, and backup support</p>
+        <p>Real-time security monitoring, alert visualization, AI-assisted detection, filtering, and reporting</p>
     </div>
 
     <div class="token-bar">
@@ -195,7 +195,7 @@
 
     <div class="filter-bar">
         <input type="text" id="searchInput" placeholder="Search logs (message, source, event type, IP)..." />
-        <input type="text" id="sourceInput" placeholder="Filter by source (e.g. wazuh, test, ids)" />
+        <input type="text" id="sourceInput" placeholder="Filter by source (e.g. wazuh, test)" />
         <input type="text" id="eventTypeInput" placeholder="Filter by event type" />
         <select id="severitySelect">
             <option value="">All severities</option>
@@ -212,8 +212,6 @@
         <button onclick="fetchDashboardData()">Apply Filters</button>
         <button onclick="exportLogsCSV()">Export Logs CSV</button>
         <button onclick="exportAlertsCSV()">Export Alerts CSV</button>
-        <button onclick="exportLogsPDF()">Export Logs PDF</button>
-        <button onclick="createBackup()">Create Backup</button>
     </div>
 
     <div class="main">
@@ -547,8 +545,6 @@
                             <div class="meta">${severityTag(log.severity)} ${log.timestamp || ""}</div>
                             <div class="meta">IP: ${log.source_ip || "-"}</div>
                             <div class="meta">Risk Score: ${log.risk_score ?? "-"}</div>
-                            <div class="meta">User Label: ${log.user_label || "-"}</div>
-                            <div class="meta">Message Hash: ${log.message_hash ? log.message_hash.slice(0, 20) + "..." : "-"}</div>
                             <div class="meta">${log.message || ""}</div>
                         </div>
                     `).join("");
@@ -598,39 +594,6 @@
                     link.href = URL.createObjectURL(blob);
                     link.download = "alerts_export.csv";
                     link.click();
-                })
-                .catch(error => alert(error.message));
-        }
-
-        function exportLogsPDF() {
-            const filters = getFilters();
-            const url = filters ? `/logs/export/pdf?${filters}` : "/logs/export/pdf";
-
-            fetch(url, { headers: getHeaders() })
-                .then(response => {
-                    if (!response.ok) throw new Error("Could not export logs PDF");
-                    return response.blob();
-                })
-                .then(blob => {
-                    const link = document.createElement("a");
-                    link.href = URL.createObjectURL(blob);
-                    link.download = "logs_report.pdf";
-                    link.click();
-                })
-                .catch(error => alert(error.message));
-        }
-
-        function createBackup() {
-            fetch("/logs/backup", {
-                method: "POST",
-                headers: getHeaders()
-            })
-                .then(response => {
-                    if (!response.ok) throw new Error("Could not create backup");
-                    return response.json();
-                })
-                .then(data => {
-                    alert(`Backup created: ${data.backup_file}`);
                 })
                 .catch(error => alert(error.message));
         }
