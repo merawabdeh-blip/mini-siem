@@ -1,11 +1,11 @@
 import json
 import time
 import requests
+import os
 
 WAZUH_ALERTS = "/var/ossec/logs/alerts/alerts.json"
 SIEM_URL = "http://127.0.0.1:8000/logs/log"
-
-TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc3NzI5MzEzN30.gTqEyDc0eepZ1fPSHZ_iQcn7VYY1R_GMGy0IXs7G-KQ"
+TOKEN = os.getenv("TOKEN")
 
 HEADERS = {
     "Authorization": f"Bearer {TOKEN}",
