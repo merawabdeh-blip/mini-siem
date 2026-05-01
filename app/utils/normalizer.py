@@ -37,6 +37,8 @@ def detect_source(log_line, message: str) -> str:
         return "wazuh"
     if "dataset" in msg:
         return "dataset"
+    if "live" in msg or "packet" in msg or "icmp" in msg or "tcp" in msg or "udp" in msg:
+        return "live_capture"
 
     return "api" if isinstance(log_line, dict) else "syslog"
 
@@ -49,6 +51,16 @@ def detect_event_type(message: str, source: str) -> str:
 
     if msg.isdigit():
         return "NOISE"
+
+    # Live capture mapping
+    if "icmp" in msg:
+        return "ICMP"
+
+    if "tcp" in msg:
+        return "TCP_ACTIVITY"
+
+    if "udp" in msg:
+        return "UDP_ACTIVITY"
 
     # Dataset-aware mapping
     if "benign" in msg:
@@ -147,7 +159,10 @@ def detect_severity(event_type: str, source: str, message: str) -> str:
     ]:
         return "high"
 
-    if event_type == "FAILED_LOGIN":
+    if event_type in ["TCP_ACTIVITY", "UDP_ACTIVITY"]:
+        return "medium"
+
+    if event_type in ["ICMP", "FAILED_LOGIN"]:
         return "medium"
 
     if event_type in ["SUCCESS_LOGIN", "SYSTEM_ACTIVITY", "NORMAL"]:
