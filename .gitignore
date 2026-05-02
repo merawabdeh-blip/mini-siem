@@ -13,3 +13,4 @@ cicids2017_attacks.csv
 *.db
 *.zip
 __pycache__/
+siem.db*
