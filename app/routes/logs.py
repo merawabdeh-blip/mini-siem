@@ -23,13 +23,22 @@ router = APIRouter(prefix="/logs")
 
 def calculate_risk_score(event_type: str, prediction: str) -> int:
     base_scores = {
-        "FAILED_LOGIN": 40,
-        "PORT_SCAN": 60,
-        "BRUTE_FORCE": 80,
-        "PRIVILEGE_ESCALATION": 90,
+        "NORMAL": 10,
         "SUCCESS_LOGIN": 10,
         "UNKNOWN": 20,
+        "ICMP": 20,
+        "TCP_ACTIVITY": 30,
+        "UDP_ACTIVITY": 30,
         "ATTACK": 30,
+        "FAILED_LOGIN": 40,
+        "DOS": 70,
+        "PORT_SCAN": 60,
+        "BRUTE_FORCE": 80,
+        "BOTNET": 85,
+        "WEB_ATTACK": 85,
+        "INFILTRATION": 90,
+        "MALWARE": 90,
+        "PRIVILEGE_ESCALATION": 90,
     }
 
     score = base_scores.get(str(event_type).upper(), 20)
@@ -44,13 +53,7 @@ def calculate_risk_score(event_type: str, prediction: str) -> int:
     return min(score, 100)
 
 
-def build_logs_query(
-    source: str | None = None,
-    severity: str | None = None,
-    event_type: str | None = None,
-    source_ip: str | None = None,
-    q: str | None = None,
-):
+def build_logs_query(source=None, severity=None, event_type=None, source_ip=None, q=None):
     query = "SELECT * FROM logs"
     conditions = []
     params = []
@@ -85,12 +88,7 @@ def build_logs_query(
     return query, params
 
 
-def build_alerts_query(
-    severity: str | None = None,
-    alert_type: str | None = None,
-    source_ip: str | None = None,
-    q: str | None = None,
-):
+def build_alerts_query(severity=None, alert_type=None, source_ip=None, q=None):
     query = "SELECT * FROM alerts"
     conditions = []
     params = []
@@ -185,6 +183,27 @@ def receive_log(
 
     alerts = run_detection([normalized])
 
+    critical_events = [
+        "DOS",
+        "DDOS",
+        "PORT_SCAN",
+        "BRUTE_FORCE",
+        "BOTNET",
+        "WEB_ATTACK",
+        "INFILTRATION",
+        "MALWARE",
+        "PRIVILEGE_ESCALATION",
+        "ATTACK",
+    ]
+
+    if normalized["event_type"] in critical_events:
+        alerts.append({
+            "type": normalized["event_type"],
+            "source_ip": normalized["source_ip"],
+            "details": f"{normalized['event_type']} detected: {normalized['message']}",
+            "severity": normalized["severity"]
+        })
+
     if prediction in ["ATTACK", "CRITICAL"]:
         severity = "high" if prediction == "ATTACK" else "critical"
 
@@ -196,7 +215,16 @@ def receive_log(
         })
 
     elif prediction == "SUSPICIOUS" and normalized["event_type"] in [
-        "BRUTE_FORCE", "PORT_SCAN", "PRIVILEGE_ESCALATION", "FAILED_LOGIN", "ATTACK"
+        "BRUTE_FORCE",
+        "PORT_SCAN",
+        "PRIVILEGE_ESCALATION",
+        "FAILED_LOGIN",
+        "ATTACK",
+        "DOS",
+        "BOTNET",
+        "WEB_ATTACK",
+        "INFILTRATION",
+        "MALWARE",
     ]:
         alerts.append({
             "type": "AI_SUSPICIOUS",
@@ -401,7 +429,7 @@ def export_logs_pdf(
 def get_model_metrics(current_user: dict = Depends(require_role(["viewer", "analyst", "admin"]))):
     log_audit_event(current_user["sub"], "VIEW_MODEL_METRICS", "/logs/model-metrics")
 
-    metrics = {
+    return {
         "model_name": "Isolation Forest",
         "training_dataset": "UNSW-NB15",
         "test_dataset": "UNSW-NB15_4",
@@ -411,8 +439,6 @@ def get_model_metrics(current_user: dict = Depends(require_role(["viewer", "anal
         "f1_score": 0.7234,
         "notes": "Current production model used in the AI-enhanced Mini SIEM."
     }
-
-    return metrics
 
 
 @router.post("/backup")
