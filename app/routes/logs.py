@@ -455,10 +455,15 @@ def label_log(
     }
 
 
-@router.get("/dashboard")
-def dashboard():
-    return FileResponse(Path("templates/dashboard.html"))
+# ... كل الكود عندك كما هو بدون تغيير ...
 
+@router.get("/dashboard")
+def dashboard(
+    current_user: dict = Depends(require_role(["viewer", "analyst", "admin"]))
+):
+    log_audit_event(current_user["sub"], "VIEW_DASHBOARD", "/logs/dashboard")
+    return FileResponse(Path("templates/dashboard.html"))
+# ... باقي الكود كما هو ...
 
 @router.get("/audit")
 def get_audit_logs(current_user: dict = Depends(require_role(["admin"]))):

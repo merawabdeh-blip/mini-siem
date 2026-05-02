@@ -2,6 +2,7 @@ import json
 import time
 import requests
 import os
+import re
 
 WAZUH_ALERTS = "/var/ossec/logs/alerts/alerts.json"
 SIEM_URL = "http://127.0.0.1:8000/logs/log"
@@ -22,6 +23,9 @@ EVENT_TYPE_MAP = {
     "Brute force attack detected": "BRUTE_FORCE",
     "Port scan detected": "PORT_SCAN"
 }
+def extract_ip(text: str) -> str:
+    match = re.search(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", text)
+    return match.group(0) if match else "127.0.0.1"
 
 def send_to_siem(alert: dict) -> None:
     rule = alert.get("rule", {})
@@ -36,7 +40,7 @@ def send_to_siem(alert: dict) -> None:
     payload = {
         "message": alert.get("full_log", ""),
         "source": "wazuh",
-        "source_ip": data.get("srcip", "127.0.0.1"),
+        "source_ip": data.get("srcip") or extract_ip(alert.get("full_log", "")),
         "event_type": EVENT_TYPE_MAP.get(description, "UNKNOWN"),
         "severity": str(rule.get("level", "low")),
         "timestamp": alert.get("timestamp", "")

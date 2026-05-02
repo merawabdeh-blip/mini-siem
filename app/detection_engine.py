@@ -7,11 +7,17 @@ from app.ai_analyzer import predict_log
 failed_login_counter = defaultdict(int)
 port_scan_counter = defaultdict(set)
 
+# Correlation memory: track event types seen per IP
+ip_event_history = defaultdict(set)
+
 # =========================
 # Thresholds
 # =========================
 BRUTE_FORCE_THRESHOLD = 5
 PORT_SCAN_THRESHOLD = 5
+
+# If the same IP shows these attack types, raise a stronger alert
+MULTI_STAGE_EVENTS = {"FAILED_LOGIN", "BRUTE_FORCE", "PORT_SCAN"}
 
 
 def detect_rule_based(logs):
@@ -25,6 +31,9 @@ def detect_rule_based(logs):
         if not ip or not event:
             continue
 
+        event = str(event).upper()
+        ip_event_history[ip].add(event)
+
         # Count failed logins per IP
         if event == "FAILED_LOGIN":
             failed_login_counter[ip] += 1
@@ -33,14 +42,15 @@ def detect_rule_based(logs):
         elif event == "PORT_SCAN":
             port_scan_counter[ip].add(message)
 
-        elif event == "LOGIN_SUCCESS":
-         if failed_login_counter[ip] >= BRUTE_FORCE_THRESHOLD:
-             alerts.append({
-                 "type": "SUSPICIOUS_LOGIN_SUCCESS",
-                 "source_ip": ip,
-                 "severity": "high",
-                 "details": f"Successful login after {failed_login_counter[ip]} failed attempts"
-        })
+        # Successful login after failed attempts
+        elif event in ["LOGIN_SUCCESS", "SUCCESS_LOGIN"]:
+            if failed_login_counter[ip] >= BRUTE_FORCE_THRESHOLD:
+                alerts.append({
+                    "type": "SUSPICIOUS_LOGIN_SUCCESS",
+                    "source_ip": ip,
+                    "severity": "high",
+                    "details": f"Successful login after {failed_login_counter[ip]} failed attempts"
+                })
 
     # Brute Force Alerts
     for ip, count in failed_login_counter.items():
@@ -51,6 +61,7 @@ def detect_rule_based(logs):
                 "severity": "high",
                 "details": f"{count} failed login attempts detected"
             })
+            ip_event_history[ip].add("BRUTE_FORCE")
 
     # Port Scan Alerts
     for ip, ports in port_scan_counter.items():
@@ -60,6 +71,24 @@ def detect_rule_based(logs):
                 "source_ip": ip,
                 "severity": "high",
                 "details": f"{len(ports)} unique ports scanned"
+            })
+            ip_event_history[ip].add("PORT_SCAN")
+
+    return alerts
+
+
+def detect_correlation_alerts():
+    alerts = []
+
+    for ip, events in ip_event_history.items():
+        matched_events = MULTI_STAGE_EVENTS.intersection(events)
+
+        if len(matched_events) >= 3:
+            alerts.append({
+                "type": "MULTI_STAGE_ATTACK",
+                "source_ip": ip,
+                "severity": "critical",
+                "details": f"Multiple attack stages detected from same IP: {', '.join(sorted(matched_events))}"
             })
 
     return alerts
@@ -72,7 +101,6 @@ def detect_ai_anomalies(logs):
         try:
             result = predict_log(log)
 
-
             if isinstance(result, dict):
                 if result.get("label") == "ANOMALY":
                     alerts.append({
@@ -81,7 +109,6 @@ def detect_ai_anomalies(logs):
                         "severity": "medium",
                         "details": f"Detected by AI (score: {result.get('score', 'N/A')})"
                     })
-
 
             elif result == "ANOMALY":
                 alerts.append({
@@ -126,6 +153,9 @@ def apply_hybrid_logic(alerts):
         elif alert["type"] == "SUSPICIOUS_LOGIN_SUCCESS":
             updated_alert["severity"] = "critical"
 
+        elif alert["type"] == "MULTI_STAGE_ATTACK":
+            updated_alert["severity"] = "critical"
+
         updated_alerts.append(updated_alert)
 
     return updated_alerts
@@ -150,8 +180,9 @@ def run_detection(logs):
 
     rule_based_alerts = detect_rule_based(logs)
     ai_alerts = detect_ai_anomalies(logs)
+    correlation_alerts = detect_correlation_alerts()
 
-    all_alerts = rule_based_alerts + ai_alerts
+    all_alerts = rule_based_alerts + ai_alerts + correlation_alerts
     all_alerts = apply_hybrid_logic(all_alerts)
     all_alerts = remove_duplicate_alerts(all_alerts)
 
