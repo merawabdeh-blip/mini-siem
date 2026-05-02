@@ -32,7 +32,7 @@
             color: #cbd5e1;
         }
 
-        .token-bar, .filter-bar, .action-bar {
+        .token-bar, .login-bar, .filter-bar, .action-bar {
             display: flex;
             gap: 10px;
             padding: 16px 24px;
@@ -41,9 +41,7 @@
             flex-wrap: wrap;
         }
 
-        .token-bar input,
-        .filter-bar input,
-        .filter-bar select {
+        input, select {
             flex: 1;
             min-width: 180px;
             padding: 10px;
@@ -53,8 +51,7 @@
             color: white;
         }
 
-        .token-bar button,
-        .action-bar button {
+        button {
             padding: 10px 16px;
             border: none;
             border-radius: 8px;
@@ -64,10 +61,7 @@
             font-weight: bold;
         }
 
-        .token-bar button:hover,
-        .action-bar button:hover {
-            background: #1d4ed8;
-        }
+        button:hover { background: #1d4ed8; }
 
         .main { padding: 20px; }
 
@@ -164,9 +158,7 @@
             position: relative;
         }
 
-        .muted {
-            color: #94a3b8;
-        }
+        .muted { color: #94a3b8; }
 
         .footer-note {
             margin-top: 20px;
@@ -180,22 +172,30 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1>AI-Enhanced Mini SIEM Dashboard</h1>
-        <p>Real-time security monitoring, alert visualization, AI-assisted detection, filtering, reporting, and backup support</p>
+        <p>Secure real-time monitoring with JWT login, alerts, AI detection, charts, exports, and backup</p>
+    </div>
+
+    <div class="login-bar">
+        <input type="text" id="loginUsername" placeholder="Username" />
+        <input type="password" id="loginPassword" placeholder="Password" />
+        <button onclick="loginUser()">Login</button>
+        <button onclick="logoutUser()">Logout</button>
     </div>
 
     <div class="token-bar">
-        <input type="text" id="tokenInput" placeholder="Paste Bearer token here" />
+        <input type="text" id="tokenInput" placeholder="JWT token will appear here after login" />
         <button onclick="saveToken()">Save Token</button>
         <button onclick="clearToken()">Clear Token</button>
         <button onclick="fetchDashboardData()">Refresh</button>
     </div>
 
     <div class="filter-bar">
-        <input type="text" id="searchInput" placeholder="Search logs (message, source, event type, IP)..." />
-        <input type="text" id="sourceInput" placeholder="Filter by source (e.g. wazuh, test, ids)" />
+        <input type="text" id="searchInput" placeholder="Search logs..." />
+        <input type="text" id="sourceInput" placeholder="Filter by source" />
         <input type="text" id="eventTypeInput" placeholder="Filter by event type" />
         <select id="severitySelect">
             <option value="">All severities</option>
@@ -203,8 +203,6 @@
             <option value="medium">medium</option>
             <option value="high">high</option>
             <option value="critical">critical</option>
-            <option value="3">3</option>
-            <option value="7">7</option>
         </select>
     </div>
 
@@ -218,59 +216,23 @@
 
     <div class="main">
         <div class="stats">
-            <div class="card">
-                <h3>Total Logs</h3>
-                <div class="value" id="totalLogs">-</div>
-            </div>
-            <div class="card">
-                <h3>Total Alerts</h3>
-                <div class="value" id="totalAlerts">-</div>
-            </div>
-            <div class="card">
-                <h3>Most Frequent Alert</h3>
-                <div class="value" id="topAlertType">-</div>
-            </div>
-            <div class="card">
-                <h3>Top Source IP</h3>
-                <div class="value" id="topIP">-</div>
-            </div>
-            <div class="card">
-                <h3>AI Status</h3>
-                <div class="value" id="aiStatus">Active</div>
-            </div>
-            <div class="card">
-                <h3>Last Refresh</h3>
-                <div class="value" id="lastRefresh">-</div>
-            </div>
+            <div class="card"><h3>Total Logs</h3><div class="value" id="totalLogs">-</div></div>
+            <div class="card"><h3>Total Alerts</h3><div class="value" id="totalAlerts">-</div></div>
+            <div class="card"><h3>Most Frequent Alert</h3><div class="value" id="topAlertType">-</div></div>
+            <div class="card"><h3>Top Source IP</h3><div class="value" id="topIP">-</div></div>
+            <div class="card"><h3>AI Status</h3><div class="value" id="aiStatus">Active</div></div>
+            <div class="card"><h3>Last Refresh</h3><div class="value" id="lastRefresh">-</div></div>
         </div>
 
         <div class="panel" style="margin-bottom:20px;">
             <h2>Model Metrics</h2>
             <div class="metrics-grid">
-                <div class="card">
-                    <h3>Model</h3>
-                    <div class="value" id="modelName">-</div>
-                </div>
-                <div class="card">
-                    <h3>Accuracy</h3>
-                    <div class="value" id="modelAccuracy">-</div>
-                </div>
-                <div class="card">
-                    <h3>Precision</h3>
-                    <div class="value" id="modelPrecision">-</div>
-                </div>
-                <div class="card">
-                    <h3>Recall</h3>
-                    <div class="value" id="modelRecall">-</div>
-                </div>
-                <div class="card">
-                    <h3>F1 Score</h3>
-                    <div class="value" id="modelF1">-</div>
-                </div>
-                <div class="card">
-                    <h3>Training Dataset</h3>
-                    <div class="value" id="trainingDataset">-</div>
-                </div>
+                <div class="card"><h3>Model</h3><div class="value" id="modelName">-</div></div>
+                <div class="card"><h3>Accuracy</h3><div class="value" id="modelAccuracy">-</div></div>
+                <div class="card"><h3>Precision</h3><div class="value" id="modelPrecision">-</div></div>
+                <div class="card"><h3>Recall</h3><div class="value" id="modelRecall">-</div></div>
+                <div class="card"><h3>F1 Score</h3><div class="value" id="modelF1">-</div></div>
+                <div class="card"><h3>Training Dataset</h3><div class="value" id="trainingDataset">-</div></div>
             </div>
         </div>
 
@@ -286,42 +248,76 @@
             </div>
         </div>
 
-        <div class="grid" style="margin-top: 20px;">
+        <div class="grid" style="margin-top:20px;">
             <div class="panel">
                 <h2>Attack Types Summary</h2>
-                <div id="typeSummary" class="type-list"><span class="muted">Loading summary...</span></div>
+                <div id="typeSummary" class="type-list"></div>
             </div>
 
             <div class="panel">
                 <h2>Top Source IPs</h2>
-                <div id="ipSummary" class="ip-list"><span class="muted">Loading IP summary...</span></div>
+                <div id="ipSummary" class="ip-list"></div>
             </div>
         </div>
 
-        <div class="grid" style="margin-top: 20px;">
+        <div class="grid" style="margin-top:20px;">
             <div class="panel">
                 <h2>Alert Types Chart</h2>
-                <div class="chart-wrap">
-                    <canvas id="alertTypesChart"></canvas>
-                </div>
+                <div class="chart-wrap"><canvas id="alertTypesChart"></canvas></div>
             </div>
 
             <div class="panel">
                 <h2>Severity Distribution</h2>
-                <div class="chart-wrap">
-                    <canvas id="severityChart"></canvas>
-                </div>
+                <div class="chart-wrap"><canvas id="severityChart"></canvas></div>
             </div>
         </div>
 
-        <div class="footer-note">
-            Dashboard auto-refreshes every 5 seconds.
-        </div>
+        <div class="footer-note">Dashboard auto-refreshes every 5 seconds.</div>
     </div>
 
     <script>
         let alertTypesChart = null;
         let severityChart = null;
+
+        async function loginUser() {
+            const username = document.getElementById("loginUsername").value.trim();
+            const password = document.getElementById("loginPassword").value.trim();
+
+            if (!username || !password) {
+                alert("Please enter username and password.");
+                return;
+            }
+
+            try {
+                const res = await fetch("/auth/login", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({username, password})
+                });
+
+                if (!res.ok) {
+                    throw new Error("Invalid username or password");
+                }
+
+                const data = await res.json();
+
+                localStorage.setItem("siem_token", data.access_token);
+                document.getElementById("tokenInput").value = data.access_token;
+
+                alert("Login successful.");
+                fetchDashboardData();
+
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function logoutUser() {
+            localStorage.removeItem("siem_token");
+            document.getElementById("tokenInput").value = "";
+            alert("Logged out.");
+            fetchDashboardData();
+        }
 
         function saveToken() {
             const token = document.getElementById("tokenInput").value.trim();
@@ -390,6 +386,7 @@
                 alertTypesChart.destroy();
                 alertTypesChart = null;
             }
+
             if (severityChart) {
                 severityChart.destroy();
                 severityChart = null;
@@ -414,19 +411,10 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { labels: { color: "white" } }
-                    },
+                    plugins: { legend: { labels: { color: "white" } } },
                     scales: {
-                        x: {
-                            ticks: { color: "white" },
-                            grid: { color: "#334155" }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            ticks: { color: "white" },
-                            grid: { color: "#334155" }
-                        }
+                        x: { ticks: { color: "white" }, grid: { color: "#334155" } },
+                        y: { beginAtZero: true, ticks: { color: "white" }, grid: { color: "#334155" } }
                     }
                 }
             });
@@ -442,9 +430,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { labels: { color: "white" } }
-                    }
+                    plugins: { legend: { labels: { color: "white" } } }
                 }
             });
         }
@@ -456,6 +442,7 @@
             const severity = document.getElementById("severitySelect").value.trim();
 
             const params = new URLSearchParams();
+
             if (q) params.append("q", q);
             if (source) params.append("source", source);
             if (eventType) params.append("event_type", eventType);
@@ -477,6 +464,7 @@
                 document.getElementById("modelRecall").innerText = metrics.recall ?? "-";
                 document.getElementById("modelF1").innerText = metrics.f1_score ?? "-";
                 document.getElementById("trainingDataset").innerText = metrics.training_dataset || "-";
+
             } catch {
                 document.getElementById("modelName").innerText = "Error";
                 document.getElementById("modelAccuracy").innerText = "-";
@@ -502,7 +490,7 @@
                 ]);
 
                 if (!logsRes.ok || !alertsRes.ok) {
-                    throw new Error("Unauthorized or failed to fetch data. Make sure the token is valid.");
+                    throw new Error("Unauthorized or failed to fetch data. Please login first.");
                 }
 
                 const logs = await logsRes.json();
@@ -526,33 +514,25 @@
                 renderSummary("ipSummary", ipCounts, "IPs");
                 renderCharts(alertTypeCounts, severityCounts);
 
-                if (!alerts.length) {
-                    alertsBox.innerHTML = `<span class="muted">No alerts yet</span>`;
-                } else {
-                    alertsBox.innerHTML = alerts.slice(0, 12).map(alert => `
-                        <div class="entry">
-                            <strong>${alert.type || "UNKNOWN"} - ${alert.source_ip || "-"}</strong>
-                            <div class="meta">${severityTag(alert.severity)} ${alert.timestamp || ""}</div>
-                            <div class="meta">${alert.description || "No description"}</div>
-                        </div>
-                    `).join("");
-                }
+                alertsBox.innerHTML = alerts.length ? alerts.slice(0, 12).map(alert => `
+                    <div class="entry">
+                        <strong>${alert.type || "UNKNOWN"} - ${alert.source_ip || "-"}</strong>
+                        <div class="meta">${severityTag(alert.severity)} ${alert.timestamp || ""}</div>
+                        <div class="meta">${alert.description || alert.details || "No description"}</div>
+                    </div>
+                `).join("") : `<span class="muted">No alerts yet</span>`;
 
-                if (!logs.length) {
-                    logsBox.innerHTML = `<span class="muted">No logs found for current filters</span>`;
-                } else {
-                    logsBox.innerHTML = logs.slice(0, 12).map(log => `
-                        <div class="entry">
-                            <strong>${log.event_type || "UNKNOWN"} - ${log.source || "-"}</strong>
-                            <div class="meta">${severityTag(log.severity)} ${log.timestamp || ""}</div>
-                            <div class="meta">IP: ${log.source_ip || "-"}</div>
-                            <div class="meta">Risk Score: ${log.risk_score ?? "-"}</div>
-                            <div class="meta">User Label: ${log.user_label || "-"}</div>
-                            <div class="meta">Message Hash: ${log.message_hash ? log.message_hash.slice(0, 20) + "..." : "-"}</div>
-                            <div class="meta">${log.message || ""}</div>
-                        </div>
-                    `).join("");
-                }
+                logsBox.innerHTML = logs.length ? logs.slice(0, 12).map(log => `
+                    <div class="entry">
+                        <strong>${log.event_type || "UNKNOWN"} - ${log.source || "-"}</strong>
+                        <div class="meta">${severityTag(log.severity)} ${log.timestamp || ""}</div>
+                        <div class="meta">IP: ${log.source_ip || "-"}</div>
+                        <div class="meta">Risk Score: ${log.risk_score ?? "-"}</div>
+                        <div class="meta">User Label: ${log.user_label || "-"}</div>
+                        <div class="meta">Message Hash: ${log.message_hash ? log.message_hash.slice(0, 20) + "..." : "-"}</div>
+                        <div class="meta">${log.message || ""}</div>
+                    </div>
+                `).join("") : `<span class="muted">No logs found</span>`;
 
                 await fetchModelMetrics();
 
@@ -569,6 +549,15 @@
             }
         }
 
+        function downloadBlob(response, filename) {
+            response.blob().then(blob => {
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.click();
+            });
+        }
+
         function exportLogsCSV() {
             const filters = getFilters();
             const url = filters ? `/logs/export/csv?${filters}` : "/logs/export/csv";
@@ -576,13 +565,7 @@
             fetch(url, { headers: getHeaders() })
                 .then(response => {
                     if (!response.ok) throw new Error("Could not export logs");
-                    return response.blob();
-                })
-                .then(blob => {
-                    const link = document.createElement("a");
-                    link.href = URL.createObjectURL(blob);
-                    link.download = "logs_export.csv";
-                    link.click();
+                    return downloadBlob(response, "logs_export.csv");
                 })
                 .catch(error => alert(error.message));
         }
@@ -591,13 +574,7 @@
             fetch("/logs/alerts/export/csv", { headers: getHeaders() })
                 .then(response => {
                     if (!response.ok) throw new Error("Could not export alerts");
-                    return response.blob();
-                })
-                .then(blob => {
-                    const link = document.createElement("a");
-                    link.href = URL.createObjectURL(blob);
-                    link.download = "alerts_export.csv";
-                    link.click();
+                    return downloadBlob(response, "alerts_export.csv");
                 })
                 .catch(error => alert(error.message));
         }
@@ -609,13 +586,7 @@
             fetch(url, { headers: getHeaders() })
                 .then(response => {
                     if (!response.ok) throw new Error("Could not export logs PDF");
-                    return response.blob();
-                })
-                .then(blob => {
-                    const link = document.createElement("a");
-                    link.href = URL.createObjectURL(blob);
-                    link.download = "logs_report.pdf";
-                    link.click();
+                    return downloadBlob(response, "logs_report.pdf");
                 })
                 .catch(error => alert(error.message));
         }
@@ -626,7 +597,7 @@
                 headers: getHeaders()
             })
                 .then(response => {
-                    if (!response.ok) throw new Error("Could not create backup");
+                    if (!response.ok) throw new Error("Only admin users can create backups");
                     return response.json();
                 })
                 .then(data => {
@@ -637,9 +608,11 @@
 
         window.onload = () => {
             const savedToken = getToken();
+
             if (savedToken) {
                 document.getElementById("tokenInput").value = savedToken;
             }
+
             fetchDashboardData();
             setInterval(fetchDashboardData, 5000);
         };

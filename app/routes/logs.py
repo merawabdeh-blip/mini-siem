@@ -484,10 +484,7 @@ def label_log(
 # ... كل الكود عندك كما هو بدون تغيير ...
 
 @router.get("/dashboard")
-def dashboard(
-    current_user: dict = Depends(require_role(["viewer", "analyst", "admin"]))
-):
-    log_audit_event(current_user["sub"], "VIEW_DASHBOARD", "/logs/dashboard")
+def dashboard():
     return FileResponse(Path("templates/dashboard.html"))
 # ... باقي الكود كما هو ...
 
