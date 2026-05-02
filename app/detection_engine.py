@@ -7,8 +7,11 @@ from app.ai_analyzer import predict_log
 failed_login_counter = defaultdict(int)
 port_scan_counter = defaultdict(set)
 
-# Correlation memory: track event types seen per IP
+# Track event types seen per IP
 ip_event_history = defaultdict(set)
+
+# Track raised correlation alerts to avoid duplicates
+raised_correlation_alerts = set()
 
 # =========================
 # Thresholds
@@ -16,7 +19,6 @@ ip_event_history = defaultdict(set)
 BRUTE_FORCE_THRESHOLD = 5
 PORT_SCAN_THRESHOLD = 5
 
-# If the same IP shows these attack types, raise a stronger alert
 MULTI_STAGE_EVENTS = {"FAILED_LOGIN", "BRUTE_FORCE", "PORT_SCAN"}
 
 
@@ -34,15 +36,12 @@ def detect_rule_based(logs):
         event = str(event).upper()
         ip_event_history[ip].add(event)
 
-        # Count failed logins per IP
         if event == "FAILED_LOGIN":
             failed_login_counter[ip] += 1
 
-        # Track unique scanned ports/messages per IP
         elif event == "PORT_SCAN":
             port_scan_counter[ip].add(message)
 
-        # Successful login after failed attempts
         elif event in ["LOGIN_SUCCESS", "SUCCESS_LOGIN"]:
             if failed_login_counter[ip] >= BRUTE_FORCE_THRESHOLD:
                 alerts.append({
@@ -52,47 +51,47 @@ def detect_rule_based(logs):
                     "details": f"Successful login after {failed_login_counter[ip]} failed attempts"
                 })
 
-    # Brute Force Alerts
     for ip, count in failed_login_counter.items():
         if count >= BRUTE_FORCE_THRESHOLD:
+            ip_event_history[ip].add("BRUTE_FORCE")
             alerts.append({
                 "type": "BRUTE_FORCE",
                 "source_ip": ip,
                 "severity": "high",
                 "details": f"{count} failed login attempts detected"
             })
-            ip_event_history[ip].add("BRUTE_FORCE")
 
-    # Port Scan Alerts
     for ip, ports in port_scan_counter.items():
         if len(ports) >= PORT_SCAN_THRESHOLD:
+            ip_event_history[ip].add("PORT_SCAN")
             alerts.append({
                 "type": "PORT_SCAN",
                 "source_ip": ip,
                 "severity": "high",
                 "details": f"{len(ports)} unique ports scanned"
             })
-            ip_event_history[ip].add("PORT_SCAN")
 
     return alerts
-
 
 def detect_correlation_alerts():
     alerts = []
 
     for ip, events in ip_event_history.items():
-        matched_events = MULTI_STAGE_EVENTS.intersection(events)
-
-        if len(matched_events) >= 3:
+        if (
+            "FAILED_LOGIN" in events
+            and ("BRUTE_FORCE" in events or failed_login_counter[ip] >= BRUTE_FORCE_THRESHOLD)
+            and ("PORT_SCAN" in events or len(port_scan_counter[ip]) >= PORT_SCAN_THRESHOLD)
+            and ip not in raised_correlation_alerts
+        ):
+            raised_correlation_alerts.add(ip)
             alerts.append({
                 "type": "MULTI_STAGE_ATTACK",
                 "source_ip": ip,
                 "severity": "critical",
-                "details": f"Multiple attack stages detected from same IP: {', '.join(sorted(matched_events))}"
+                "details": "Multiple attack stages detected from same IP: FAILED_LOGIN, BRUTE_FORCE, PORT_SCAN"
             })
 
     return alerts
-
 
 def detect_ai_anomalies(logs):
     alerts = []
@@ -102,7 +101,7 @@ def detect_ai_anomalies(logs):
             result = predict_log(log)
 
             if isinstance(result, dict):
-                if result.get("label") == "ANOMALY":
+                if result.get("label") in ["ANOMALY", "SUSPICIOUS"]:
                     alerts.append({
                         "type": "AI_ANOMALY",
                         "source_ip": log.get("source_ip"),
@@ -110,7 +109,7 @@ def detect_ai_anomalies(logs):
                         "details": f"Detected by AI (score: {result.get('score', 'N/A')})"
                     })
 
-            elif result == "ANOMALY":
+            elif result in ["ANOMALY", "SUSPICIOUS"]:
                 alerts.append({
                     "type": "AI_ANOMALY",
                     "source_ip": log.get("source_ip"),
@@ -132,28 +131,19 @@ def apply_hybrid_logic(alerts):
 
         if alert["type"] == "BRUTE_FORCE":
             for other_alert in alerts:
-                if (
-                    other_alert["type"] == "AI_ANOMALY"
-                    and other_alert["source_ip"] == alert["source_ip"]
-                ):
+                if other_alert["type"] == "AI_ANOMALY" and other_alert["source_ip"] == alert["source_ip"]:
                     updated_alert["severity"] = "critical"
                     updated_alert["details"] = "Brute force confirmed by AI"
                     break
 
         elif alert["type"] == "PORT_SCAN":
             for other_alert in alerts:
-                if (
-                    other_alert["type"] == "AI_ANOMALY"
-                    and other_alert["source_ip"] == alert["source_ip"]
-                ):
+                if other_alert["type"] == "AI_ANOMALY" and other_alert["source_ip"] == alert["source_ip"]:
                     updated_alert["severity"] = "high"
                     updated_alert["details"] = "Port scan confirmed by AI"
                     break
 
-        elif alert["type"] == "SUSPICIOUS_LOGIN_SUCCESS":
-            updated_alert["severity"] = "critical"
-
-        elif alert["type"] == "MULTI_STAGE_ATTACK":
+        elif alert["type"] in ["SUSPICIOUS_LOGIN_SUCCESS", "MULTI_STAGE_ATTACK"]:
             updated_alert["severity"] = "critical"
 
         updated_alerts.append(updated_alert)
@@ -166,7 +156,7 @@ def remove_duplicate_alerts(alerts):
     seen = set()
 
     for alert in alerts:
-        key = (alert["type"], alert["source_ip"], alert["details"])
+        key = (alert.get("type"), alert.get("source_ip"), alert.get("details"))
         if key not in seen:
             seen.add(key)
             unique_alerts.append(alert)
