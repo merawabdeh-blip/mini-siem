@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Mini SIEM Login</title>
+
+    <style>
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+        }
+
+        body{
+
+            height:100vh;
+
+            display:flex;
+
+            justify-content:center;
+
+            align-items:center;
+
+            background:#071226;
+
+            font-family:Arial, Helvetica, sans-serif;
+
+            color:white;
+        }
+
+        .login-container{
+
+            width:420px;
+
+            background:#0f1d35;
+
+            padding:40px;
+
+            border-radius:20px;
+
+            box-shadow:0 0 30px rgba(0,0,0,0.5);
+        }
+
+        .logo{
+
+            text-align:center;
+
+            margin-bottom:25px;
+        }
+
+        .logo h1{
+
+            font-size:38px;
+
+            margin-bottom:10px;
+        }
+
+        .logo p{
+
+            color:#94a3b8;
+
+            font-size:14px;
+        }
+
+        .input-group{
+
+            margin-bottom:20px;
+        }
+
+        .input-group label{
+
+            display:block;
+
+            margin-bottom:8px;
+
+            color:#cbd5e1;
+
+            font-size:14px;
+        }
+
+        .input-group input{
+
+            width:100%;
+
+            padding:14px;
+
+            border:none;
+
+            border-radius:10px;
+
+            background:#162742;
+
+            color:white;
+
+            font-size:15px;
+        }
+
+        .input-group input:focus{
+
+            outline:none;
+
+            border:1px solid #2563eb;
+        }
+
+        .login-btn{
+
+            width:100%;
+
+            padding:14px;
+
+            border:none;
+
+            border-radius:10px;
+
+            background:#2563eb;
+
+            color:white;
+
+            font-size:16px;
+
+            font-weight:bold;
+
+            cursor:pointer;
+
+            transition:0.3s;
+        }
+
+        .login-btn:hover{
+
+            background:#1d4ed8;
+        }
+
+        .error-box{
+
+            margin-top:15px;
+
+            background:#7f1d1d;
+
+            color:#fecaca;
+
+            padding:12px;
+
+            border-radius:10px;
+
+            display:none;
+
+            text-align:center;
+
+            font-size:14px;
+        }
+
+        .success-box{
+
+            margin-top:15px;
+
+            background:#14532d;
+
+            color:#bbf7d0;
+
+            padding:12px;
+
+            border-radius:10px;
+
+            display:none;
+
+            text-align:center;
+
+            font-size:14px;
+        }
+
+        .register-link{
+
+            text-align:center;
+
+            margin-top:20px;
+
+            color:#9bb2d3;
+        }
+
+        .register-link a{
+
+            color:#4f8cff;
+
+            text-decoration:none;
+
+            font-weight:bold;
+        }
+
+        .register-link a:hover{
+
+            text-decoration:underline;
+        }
+
+        .role-box{
+
+            margin-top:25px;
+
+            background:#162742;
+
+            padding:15px;
+
+            border-radius:12px;
+        }
+
+        .role-box h3{
+
+            margin-bottom:12px;
+
+            color:#93c5fd;
+        }
+
+        .role-box p{
+
+            margin-bottom:8px;
+
+            color:#cbd5e1;
+
+            font-size:14px;
+        }
+
+        .footer{
+
+            margin-top:25px;
+
+            text-align:center;
+
+            color:#64748b;
+
+            font-size:13px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="login-container">
+
+        <div class="logo">
+
+            <h1>Mini SIEM</h1>
+
+            <p>AI-Enhanced Security Monitoring System</p>
+
+        </div>
+
+        <div class="input-group">
+
+            <label>Username</label>
+
+            <input type="text" id="username" placeholder="Enter username">
+
+        </div>
+
+        <div class="input-group">
+
+            <label>Password</label>
+
+            <input type="password" id="password" placeholder="Enter password">
+
+        </div>
+
+        <button class="login-btn" onclick="loginUser()">
+
+            Login
+
+        </button>
+
+        <div class="register-link">
+
+            Don't have an account?
+
+            <a href="/register">Create Account</a>
+
+        </div>
+
+        <div class="error-box" id="errorBox"></div>
+
+        <div class="success-box" id="successBox"></div>
+
+        <div class="role-box">
+
+            <h3>System Roles</h3>
+
+            <p><strong>Admin:</strong> Full dashboard access and management</p>
+
+            <p><strong>Analyst:</strong> Monitoring and export access</p>
+
+            <p><strong>Viewer:</strong> View-only dashboard access</p>
+
+        </div>
+
+        <div class="footer">
+
+            AI-Enhanced Mini SIEM Project
+
+        </div>
+
+    </div>
+
+<script>
+
+    // =========================
+    // Check Existing Session
+    // =========================
+
+    const existingToken = localStorage.getItem("siem_token");
+
+    if(existingToken){
+
+        window.location.href = "/dashboard";
+    }
+
+
+    // =========================
+    // Login Function
+    // =========================
+
+    async function loginUser(){
+
+        const username = document.getElementById("username").value.trim();
+
+        const password = document.getElementById("password").value.trim();
+
+        const errorBox = document.getElementById("errorBox");
+
+        const successBox = document.getElementById("successBox");
+
+        errorBox.style.display = "none";
+
+        successBox.style.display = "none";
+
+        if(!username || !password){
+
+            errorBox.style.display = "block";
+
+            errorBox.innerText = "Please enter username and password.";
+
+            return;
+        }
+
+        try{
+
+            const response = await fetch("/auth/login",{
+
+                method:"POST",
+
+                headers:{
+                    "Content-Type":"application/json"
+                },
+
+                body:JSON.stringify({
+                    username:username,
+                    password:password
+                })
+
+            });
+
+            if(!response.ok){
+
+                throw new Error("Invalid username or password");
+            }
+
+            const data = await response.json();
+
+            // Save Token
+            localStorage.setItem("siem_token", data.access_token);
+
+            // Save Role
+            localStorage.setItem("siem_role", data.role);
+
+            // Save Username
+            localStorage.setItem("siem_username", username);
+
+            successBox.style.display = "block";
+
+            successBox.innerText = "Login successful. Redirecting...";
+
+            console.log("TOKEN:", data.access_token);
+
+            console.log("ROLE:", data.role);
+
+            // Redirect To Dashboard
+            setTimeout(()=>{
+
+                window.location.href = "/dashboard";
+
+            },1000);
+
+        }catch(error){
+
+            errorBox.style.display = "block";
+
+            errorBox.innerText = error.message;
+        }
+    }
+
+</script>
+
+</body>
+
+</html>

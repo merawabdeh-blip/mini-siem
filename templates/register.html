@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini SIEM Register</title>
+
+    <style>
+
+        body{
+            background:#081226;
+            font-family:Arial, sans-serif;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+            margin:0;
+            color:white;
+        }
+
+        .register-box{
+            width:420px;
+            background:#101b34;
+            padding:40px;
+            border-radius:18px;
+            box-shadow:0 0 25px rgba(0,0,0,0.4);
+        }
+
+        h1{
+            text-align:center;
+            margin-bottom:10px;
+            font-size:42px;
+            color:white;
+        }
+
+        .subtitle{
+            text-align:center;
+            color:#8da2c0;
+            margin-bottom:30px;
+            font-size:18px;
+        }
+
+        label{
+            display:block;
+            margin-bottom:8px;
+            margin-top:15px;
+            font-weight:bold;
+            color:#b7c7e2;
+        }
+
+        input{
+            width:100%;
+            padding:14px;
+            border:none;
+            border-radius:10px;
+            background:#f4efbe;
+            font-size:15px;
+            box-sizing:border-box;
+        }
+
+        button{
+            width:100%;
+            padding:14px;
+            margin-top:25px;
+            border:none;
+            border-radius:10px;
+            background:#2f67ea;
+            color:white;
+            font-size:18px;
+            cursor:pointer;
+            transition:0.3s;
+        }
+
+        button:hover{
+            background:#1f54cf;
+        }
+
+        .login-link{
+            text-align:center;
+            margin-top:20px;
+            color:#9bb2d3;
+        }
+
+        .login-link a{
+            color:#4f8cff;
+            text-decoration:none;
+            font-weight:bold;
+        }
+
+        .login-link a:hover{
+            text-decoration:underline;
+        }
+
+        .message{
+            text-align:center;
+            margin-top:20px;
+            font-weight:bold;
+        }
+
+        .success{
+            color:#22c55e;
+        }
+
+        .error{
+            color:#ef4444;
+        }
+
+        .roles-box{
+            margin-top:25px;
+            background:#162544;
+            padding:18px;
+            border-radius:12px;
+        }
+
+        .roles-box h3{
+            margin-top:0;
+            color:#8ec5ff;
+        }
+
+        .roles-box p{
+            margin:8px 0;
+            color:#d0dbed;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <div class="register-box">
+
+        <h1>Mini SIEM</h1>
+
+        <div class="subtitle">
+            Create New Viewer Account
+        </div>
+
+        <label>Username</label>
+        <input type="text" id="username" placeholder="Enter username">
+
+        <label>Email</label>
+        <input type="email" id="email" placeholder="Enter email">
+
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Enter password">
+
+        <button onclick="register()">
+            Register
+        </button>
+
+        <div id="message" class="message"></div>
+
+        <div class="login-link">
+            Already have an account?
+            <a href="/">Login Here</a>
+        </div>
+
+        <div class="roles-box">
+            <h3>Registration Policy</h3>
+
+            <p><strong>Viewer:</strong> Can create account and access dashboard view.</p>
+
+            <p><strong>Analyst:</strong> Created by Admin only.</p>
+
+            <p><strong>Admin:</strong> Full system access and management.</p>
+        </div>
+
+    </div>
+
+<script>
+
+async function register(){
+
+    const username = document.getElementById("username").value;
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    const messageBox = document.getElementById("message");
+
+    messageBox.innerHTML = "";
+
+    if(!username || !email || !password){
+
+        messageBox.innerHTML = "Please fill all fields";
+        messageBox.className = "message error";
+        return;
+    }
+
+    try{
+
+        const response = await fetch("/auth/register",{
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":"application/json"
+            },
+
+            body:JSON.stringify({
+
+                username:username,
+                email:email,
+                password:password,
+
+                /*
+                IMPORTANT:
+                Force every registered user
+                to become viewer only
+                */
+
+                role:"viewer"
+
+            })
+
+        });
+
+        const data = await response.json();
+
+        if(response.ok){
+
+            messageBox.innerHTML = "Registration successful. Redirecting to login...";
+            messageBox.className = "message success";
+
+            setTimeout(()=>{
+
+                window.location.href="/";
+
+            },2000);
+
+        }else{
+
+            messageBox.innerHTML = data.detail || "Registration failed";
+            messageBox.className = "message error";
+
+        }
+
+    }catch(error){
+
+        messageBox.innerHTML = "Server error";
+        messageBox.className = "message error";
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,621 +1,667 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Mini SIEM Dashboard</title>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
-        * { box-sizing: border-box; }
 
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #0f172a;
-            color: white;
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
         }
 
-        .header {
-            padding: 24px;
-            text-align: center;
-            border-bottom: 1px solid #334155;
-            background: #111827;
+        body{
+            background:#071226;
+            color:white;
+            font-family:Arial, Helvetica, sans-serif;
+            padding:20px;
         }
 
-        .header h1 {
-            margin: 0;
-            font-size: 32px;
+        h1{
+            text-align:center;
+            margin-bottom:10px;
+            font-size:42px;
         }
 
-        .header p {
-            margin-top: 10px;
-            color: #cbd5e1;
+        .subtitle{
+            text-align:center;
+            color:#94a3b8;
+            margin-bottom:35px;
+        }
+       .user-info{
+
+          text-align:center;
+
+          margin-bottom:25px;
+
+          color:#93c5fd;
+
+          font-size:16px;
+
+          font-weight:bold;
         }
 
-        .token-bar, .login-bar, .filter-bar, .action-bar {
-            display: flex;
-            gap: 10px;
-            padding: 16px 24px;
-            background: #1e293b;
-            border-bottom: 1px solid #334155;
-            flex-wrap: wrap;
+        .top-box{
+            background:#0f1d35;
+            padding:20px;
+            border-radius:15px;
+            margin-bottom:20px;
         }
 
-        input, select {
-            flex: 1;
-            min-width: 180px;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #475569;
-            background: #0f172a;
-            color: white;
+        .login-row{
+            display:flex;
+            gap:10px;
+            margin-bottom:15px;
         }
 
-        button {
-            padding: 10px 16px;
-            border: none;
-            border-radius: 8px;
-            background: #2563eb;
-            color: white;
-            cursor: pointer;
-            font-weight: bold;
+        input,select{
+            flex:1;
+            padding:12px;
+            border:none;
+            border-radius:10px;
+            background:#162742;
+            color:white;
         }
 
-        button:hover { background: #1d4ed8; }
-
-        .main { padding: 20px; }
-
-        .stats, .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin-bottom: 20px;
+        button{
+            padding:12px 18px;
+            border:none;
+            border-radius:10px;
+            background:#2563eb;
+            color:white;
+            cursor:pointer;
+            font-weight:bold;
         }
 
-        .card {
-            background: #1e293b;
-            border-radius: 14px;
-            padding: 18px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        button:hover{
+            background:#1d4ed8;
         }
 
-        .card h3 {
-            margin: 0 0 8px 0;
-            font-size: 16px;
-            color: #cbd5e1;
+        .filters{
+            display:flex;
+            gap:10px;
+            margin-top:15px;
+            margin-bottom:15px;
         }
 
-        .card .value {
-            font-size: 28px;
-            font-weight: bold;
+        .actions{
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 20px;
+        .stats{
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+            gap:15px;
+            margin-top:20px;
         }
 
-        .panel {
-            background: #1e293b;
-            border-radius: 14px;
-            padding: 18px;
-            min-height: 300px;
+        .card{
+            background:#0f1d35;
+            padding:20px;
+            border-radius:15px;
         }
 
-        .panel h2 {
-            margin-top: 0;
-            margin-bottom: 16px;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 10px;
+        .card h2{
+            font-size:18px;
+            margin-bottom:10px;
+            color:#94a3b8;
         }
 
-        .entry {
-            background: #0f172a;
-            border: 1px solid #334155;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 12px;
+        .card p{
+            font-size:32px;
+            font-weight:bold;
         }
 
-        .entry strong {
-            display: block;
-            margin-bottom: 6px;
+        .main-grid{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:20px;
+            margin-top:20px;
         }
 
-        .meta {
-            color: #cbd5e1;
-            font-size: 14px;
-            line-height: 1.5;
+        .panel{
+            background:#0f1d35;
+            padding:20px;
+            border-radius:15px;
+            min-height:400px;
         }
 
-        .tag {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: bold;
-            margin-right: 6px;
+        .panel h3{
+            margin-bottom:20px;
         }
 
-        .high { background: #7f1d1d; color: #fecaca; }
-        .medium { background: #78350f; color: #fde68a; }
-        .low { background: #064e3b; color: #bbf7d0; }
-        .critical { background: #450a0a; color: #fca5a5; }
-        .unknown { background: #334155; color: #e2e8f0; }
-
-        .type-list div,
-        .ip-list div {
-            margin-bottom: 10px;
-            padding: 10px;
-            background: #0f172a;
-            border-radius: 10px;
-            border: 1px solid #334155;
+        .entry{
+            background:#162742;
+            padding:15px;
+            border-radius:10px;
+            margin-bottom:10px;
         }
 
-        .chart-wrap {
-            height: 320px;
-            position: relative;
+        .meta{
+            color:#cbd5e1;
+            font-size:14px;
+            margin-top:5px;
         }
 
-        .muted { color: #94a3b8; }
-
-        .footer-note {
-            margin-top: 20px;
-            color: #94a3b8;
-            font-size: 14px;
-            text-align: center;
+        .tag{
+            padding:5px 10px;
+            border-radius:8px;
+            font-size:12px;
+            font-weight:bold;
         }
 
-        @media (max-width: 900px) {
-            .grid { grid-template-columns: 1fr; }
+        .high{
+            background:#dc2626;
         }
+
+        .medium{
+            background:#f59e0b;
+        }
+
+        .low{
+            background:#16a34a;
+        }
+
+        .critical{
+            background:#7f1d1d;
+        }
+
+        .charts{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:20px;
+            margin-top:20px;
+        }
+
+        canvas{
+            background:#0f1d35;
+            padding:20px;
+            border-radius:15px;
+            height:400px !important;
+        }
+
+        .model-box{
+            margin-top:20px;
+            background:#0f1d35;
+            padding:20px;
+            border-radius:15px;
+        }
+
+        .model-grid{
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+            gap:15px;
+            margin-top:15px;
+        }
+
+        .model-item{
+            background:#162742;
+            padding:15px;
+            border-radius:10px;
+        }
+
     </style>
+
 </head>
 
 <body>
-    <div class="header">
-        <h1>AI-Enhanced Mini SIEM Dashboard</h1>
-        <p>Secure real-time monitoring with JWT login, alerts, AI detection, charts, exports, and backup</p>
+
+    <h1>AI-Enhanced Mini SIEM Dashboard</h1>
+
+    <div class="subtitle">
+        Secure real-time monitoring with JWT login, AI detection, charts, exports, and backup
     </div>
 
-    <div class="login-bar">
-        <input type="text" id="loginUsername" placeholder="Username" />
-        <input type="password" id="loginPassword" placeholder="Password" />
-        <button onclick="loginUser()">Login</button>
-        <button onclick="logoutUser()">Logout</button>
+    <div class="user-info">
+
+    Logged in as:
+    <span id="currentUser">-</span>
+
+    |
+
+    Role:
+    <span id="currentRole">-</span>
+
     </div>
 
-    <div class="token-bar">
-        <input type="text" id="tokenInput" placeholder="JWT token will appear here after login" />
-        <button onclick="saveToken()">Save Token</button>
-        <button onclick="clearToken()">Clear Token</button>
-        <button onclick="fetchDashboardData()">Refresh</button>
-    </div>
+    <div class="top-box">
 
-    <div class="filter-bar">
-        <input type="text" id="searchInput" placeholder="Search logs..." />
-        <input type="text" id="sourceInput" placeholder="Filter by source" />
-        <input type="text" id="eventTypeInput" placeholder="Filter by event type" />
-        <select id="severitySelect">
-            <option value="">All severities</option>
-            <option value="low">low</option>
-            <option value="medium">medium</option>
-            <option value="high">high</option>
-            <option value="critical">critical</option>
-        </select>
-    </div>
+        <div class="login-row">
 
-    <div class="action-bar">
-        <button onclick="fetchDashboardData()">Apply Filters</button>
-        <button onclick="exportLogsCSV()">Export Logs CSV</button>
-        <button onclick="exportAlertsCSV()">Export Alerts CSV</button>
-        <button onclick="exportLogsPDF()">Export Logs PDF</button>
-        <button onclick="createBackup()">Create Backup</button>
-    </div>
+             <button onclick="logoutUser()">Logout</button>
 
-    <div class="main">
-        <div class="stats">
-            <div class="card"><h3>Total Logs</h3><div class="value" id="totalLogs">-</div></div>
-            <div class="card"><h3>Total Alerts</h3><div class="value" id="totalAlerts">-</div></div>
-            <div class="card"><h3>Most Frequent Alert</h3><div class="value" id="topAlertType">-</div></div>
-            <div class="card"><h3>Top Source IP</h3><div class="value" id="topIP">-</div></div>
-            <div class="card"><h3>AI Status</h3><div class="value" id="aiStatus">Active</div></div>
-            <div class="card"><h3>Last Refresh</h3><div class="value" id="lastRefresh">-</div></div>
         </div>
 
-        <div class="panel" style="margin-bottom:20px;">
-            <h2>Model Metrics</h2>
-            <div class="metrics-grid">
-                <div class="card"><h3>Model</h3><div class="value" id="modelName">-</div></div>
-                <div class="card"><h3>Accuracy</h3><div class="value" id="modelAccuracy">-</div></div>
-                <div class="card"><h3>Precision</h3><div class="value" id="modelPrecision">-</div></div>
-                <div class="card"><h3>Recall</h3><div class="value" id="modelRecall">-</div></div>
-                <div class="card"><h3>F1 Score</h3><div class="value" id="modelF1">-</div></div>
-                <div class="card"><h3>Training Dataset</h3><div class="value" id="trainingDataset">-</div></div>
-            </div>
+        <div id="adminControls">
+
+           <button id="refreshBtn" onclick="fetchDashboardData()">Refresh</button>
+
+        </div>
+        <div class="filters">
+
+            <input type="text" id="searchInput" placeholder="Search logs...">
+
+            <input type="text" id="sourceInput" placeholder="Filter by source">
+
+            <input type="text" id="eventTypeInput" placeholder="Filter by event type">
+
+            <select id="severitySelect">
+
+                <option value="">All severities</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+
+            </select>
+
         </div>
 
-        <div class="grid">
-            <div class="panel">
-                <h2>Recent Alerts</h2>
-                <div id="alertsBox"><span class="muted">Loading alerts...</span></div>
-            </div>
+        <div class="actions">
 
-            <div class="panel">
-                <h2>Recent Logs</h2>
-                <div id="logsBox"><span class="muted">Loading logs...</span></div>
-            </div>
+            <button onclick="fetchDashboardData()">Apply Filters</button>
+
+            <button id="exportLogsBtn" onclick="exportLogsCSV()">Export Logs CSV</button>
+
+            <button id="exportAlertsBtn" onclick="exportAlertsCSV()">Export Alerts CSV</button>
+
+            <button id="exportPdfBtn" onclick="exportLogsPDF()">Export Logs PDF</button>
+
+            <button id="backupBtn" onclick="createBackup()">Create Backup</button>
+
         </div>
 
-        <div class="grid" style="margin-top:20px;">
-            <div class="panel">
-                <h2>Attack Types Summary</h2>
-                <div id="typeSummary" class="type-list"></div>
-            </div>
-
-            <div class="panel">
-                <h2>Top Source IPs</h2>
-                <div id="ipSummary" class="ip-list"></div>
-            </div>
-        </div>
-
-        <div class="grid" style="margin-top:20px;">
-            <div class="panel">
-                <h2>Alert Types Chart</h2>
-                <div class="chart-wrap"><canvas id="alertTypesChart"></canvas></div>
-            </div>
-
-            <div class="panel">
-                <h2>Severity Distribution</h2>
-                <div class="chart-wrap"><canvas id="severityChart"></canvas></div>
-            </div>
-        </div>
-
-        <div class="footer-note">Dashboard auto-refreshes every 5 seconds.</div>
     </div>
 
-    <script>
-        let alertTypesChart = null;
-        let severityChart = null;
+    <div class="stats">
 
-        async function loginUser() {
-            const username = document.getElementById("loginUsername").value.trim();
-            const password = document.getElementById("loginPassword").value.trim();
+        <div class="card">
+            <h2>Total Logs</h2>
+            <p id="totalLogs">0</p>
+        </div>
 
-            if (!username || !password) {
-                alert("Please enter username and password.");
-                return;
-            }
+        <div class="card">
+            <h2>Total Alerts</h2>
+            <p id="totalAlerts">0</p>
+        </div>
 
-            try {
-                const res = await fetch("/auth/login", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({username, password})
-                });
+        <div class="card">
+            <h2>Most Frequent Alert</h2>
+            <p id="topAlertType">-</p>
+        </div>
 
-                if (!res.ok) {
-                    throw new Error("Invalid username or password");
-                }
+        <div class="card">
+            <h2>Top Source IP</h2>
+            <p id="topIP">-</p>
+        </div>
 
-                const data = await res.json();
+    </div>
 
-                localStorage.setItem("siem_token", data.access_token);
-                document.getElementById("tokenInput").value = data.access_token;
+    <div class="charts">
 
-                alert("Login successful.");
-                fetchDashboardData();
+        <canvas id="alertTypesChart"></canvas>
 
-            } catch (error) {
-                alert(error.message);
-            }
+        <canvas id="severityChart"></canvas>
+
+    </div>
+
+    <div class="main-grid">
+
+        <div class="panel">
+
+            <h3>Recent Alerts</h3>
+
+            <div id="alertsBox"></div>
+
+        </div>
+
+        <div class="panel">
+
+            <h3>Recent Logs</h3>
+
+            <div id="logsBox"></div>
+
+        </div>
+
+    </div>
+
+    <div class="model-box">
+
+        <h2>AI Model Metrics</h2>
+
+        <div class="model-grid">
+
+            <div class="model-item">
+                <strong>Model</strong>
+                <div id="modelName">-</div>
+            </div>
+
+            <div class="model-item">
+                <strong>Accuracy</strong>
+                <div id="modelAccuracy">-</div>
+            </div>
+
+            <div class="model-item">
+                <strong>Precision</strong>
+                <div id="modelPrecision">-</div>
+            </div>
+
+            <div class="model-item">
+                <strong>Recall</strong>
+                <div id="modelRecall">-</div>
+            </div>
+
+            <div class="model-item">
+                <strong>F1 Score</strong>
+                <div id="modelF1">-</div>
+            </div>
+
+            <div class="model-item">
+                <strong>Dataset</strong>
+                <div id="trainingDataset">-</div>
+            </div>
+
+        </div>
+
+    </div>
+
+<script>
+
+let alertTypesChart = null;
+let severityChart = null;
+
+function getToken() {
+    return localStorage.getItem("siem_token") || "";
+}
+
+function getHeaders() {
+    return {
+        "Authorization":"Bearer " + getToken()
+    };
+}
+function hideElement(id){
+    const el = document.getElementById(id);
+    if(el){
+        el.style.display = "none";
+    }
+}
+function applyRolePermissions(){
+
+    const role = localStorage.getItem("siem_role");
+
+    if(role === "viewer"){
+
+        hideElement("exportLogsBtn");
+        hideElement("exportAlertsBtn");
+        hideElement("exportPdfBtn");
+        hideElement("backupBtn");
+
+        hideElement("refreshBtn");
+    }
+
+    else if(role === "analyst"){
+
+        hideElement("backupBtn");
+    }
+}
+
+function logoutUser(){
+
+    localStorage.removeItem("siem_token");
+
+    localStorage.removeItem("siem_role");
+
+    localStorage.removeItem("siem_username");
+
+    window.location.href = "/";
+}
+function saveToken(){
+
+    alert("Token is managed automatically after login.");
+
+}
+
+function clearToken(){
+
+    logoutUser();
+
+}
+
+    
+function severityTag(severity){
+
+    const sev = String(severity || "unknown").toLowerCase();
+
+    return `<span class="tag ${sev}">${sev.toUpperCase()}</span>`;
+}
+
+function countByKey(items,key){
+
+    const counts = {};
+
+    for(const item of items){
+
+        const value = item[key] || "UNKNOWN";
+
+        counts[value] = (counts[value] || 0) + 1;
+    }
+
+    return counts;
+}
+
+function getTopEntry(obj){
+
+    const entries = Object.entries(obj);
+
+    if(!entries.length) return ["-",0];
+
+    entries.sort((a,b)=>b[1]-a[1]);
+
+    return entries[0];
+}
+
+function destroyCharts(){
+
+    if(alertTypesChart){
+        alertTypesChart.destroy();
+    }
+
+    if(severityChart){
+        severityChart.destroy();
+    }
+}
+
+function renderCharts(alertTypeCounts,severityCounts){
+
+    destroyCharts();
+
+    const alertCtx = document.getElementById("alertTypesChart");
+
+    const severityCtx = document.getElementById("severityChart");
+
+    alertTypesChart = new Chart(alertCtx,{
+
+        type:"bar",
+
+        data:{
+            labels:Object.keys(alertTypeCounts),
+            datasets:[{
+                label:"Alert Count",
+                data:Object.values(alertTypeCounts)
+            }]
+        }
+    });
+
+    severityChart = new Chart(severityCtx,{
+
+        type:"doughnut",
+
+        data:{
+            labels:Object.keys(severityCounts),
+            datasets:[{
+                data:Object.values(severityCounts)
+            }]
+        }
+    });
+}
+
+async function fetchModelMetrics(){
+
+    try{
+
+        const res = await fetch("/logs/model-metrics",{
+            headers:getHeaders()
+        });
+
+        const metrics = await res.json();
+
+        document.getElementById("modelName").innerText = metrics.model_name || "-";
+
+        document.getElementById("modelAccuracy").innerText = metrics.accuracy || "-";
+
+        document.getElementById("modelPrecision").innerText = metrics.precision || "-";
+
+        document.getElementById("modelRecall").innerText = metrics.recall || "-";
+
+        document.getElementById("modelF1").innerText = metrics.f1_score || "-";
+
+        document.getElementById("trainingDataset").innerText = metrics.training_dataset || "-";
+
+    }catch{}
+}
+
+async function fetchDashboardData(){
+
+    try{
+
+        const logsRes = await fetch("/logs/",{
+            headers:getHeaders()
+        });
+
+        const alertsRes = await fetch("/logs/alerts",{
+            headers:getHeaders()
+        });
+
+        const logs = await logsRes.json();
+
+        const alerts = await alertsRes.json();
+
+        const role = localStorage.getItem("siem_role");
+
+        if(role === "viewer"){
+            document.getElementById("totalLogs").innerText = "Restricted";
+        }else{
+            document.getElementById("totalLogs").innerText = Array.isArray(logs) ? logs.length : "-";
         }
 
-        function logoutUser() {
-            localStorage.removeItem("siem_token");
-            document.getElementById("tokenInput").value = "";
-            alert("Logged out.");
-            fetchDashboardData();
-        }
+        document.getElementById("totalAlerts").innerText = alerts.length;
 
-        function saveToken() {
-            const token = document.getElementById("tokenInput").value.trim();
-            localStorage.setItem("siem_token", token);
-            alert("Token saved successfully.");
-            fetchDashboardData();
-        }
+        const alertTypeCounts = countByKey(alerts,"type");
 
-        function clearToken() {
-            localStorage.removeItem("siem_token");
-            document.getElementById("tokenInput").value = "";
-            alert("Token cleared.");
-        }
+        const severityCounts = countByKey(alerts,"severity");
 
-        function getToken() {
-            return localStorage.getItem("siem_token") || "";
-        }
+        const ipCounts = countByKey(alerts,"source_ip");
 
-        function getHeaders() {
-            return {
-                "Authorization": "Bearer " + getToken()
-            };
-        }
+        const [topAlert] = getTopEntry(alertTypeCounts);
 
-        function severityTag(severity) {
-            const sev = String(severity || "unknown").toLowerCase();
-            const cls = ["high", "medium", "low", "critical"].includes(sev) ? sev : "unknown";
-            return `<span class="tag ${cls}">${sev.toUpperCase()}</span>`;
-        }
+        const [topIP] = getTopEntry(ipCounts);
 
-        function countByKey(items, key) {
-            const counts = {};
-            for (const item of items) {
-                const value = item[key] || "UNKNOWN";
-                counts[value] = (counts[value] || 0) + 1;
-            }
-            return counts;
-        }
+        document.getElementById("topAlertType").innerText = topAlert;
 
-        function getTopEntry(countsObj) {
-            const entries = Object.entries(countsObj);
-            if (!entries.length) return ["-", 0];
-            entries.sort((a, b) => b[1] - a[1]);
-            return entries[0];
-        }
+        document.getElementById("topIP").innerText = topIP;
 
-        function renderSummary(containerId, countsObj, labelName) {
-            const box = document.getElementById(containerId);
-            const entries = Object.entries(countsObj).sort((a, b) => b[1] - a[1]).slice(0, 8);
+        renderCharts(alertTypeCounts,severityCounts);
 
-            if (!entries.length) {
-                box.innerHTML = `<span class="muted">No ${labelName} available</span>`;
-                return;
-            }
+        document.getElementById("alertsBox").innerHTML = alerts.slice(0,10).map(alert => `
+            <div class="entry">
+                <strong>${alert.type}</strong>
+                <div class="meta">${severityTag(alert.severity)}</div>
+                <div class="meta">${alert.description}</div>
+            </div>
+        `).join("");
 
-            box.innerHTML = entries.map(([name, count]) => `
-                <div>
-                    <strong>${name}</strong>
-                    <div class="meta">Count: ${count}</div>
-                </div>
-            `).join("");
-        }
+        document.getElementById("logsBox").innerHTML = logs.slice(0,10).map(log => `
+            <div class="entry">
+                <strong>${log.event_type}</strong>
+                <div class="meta">${severityTag(log.severity)}</div>
+                <div class="meta">${log.message}</div>
+            </div>
+        `).join("");
 
-        function destroyCharts() {
-            if (alertTypesChart) {
-                alertTypesChart.destroy();
-                alertTypesChart = null;
-            }
+        fetchModelMetrics();
 
-            if (severityChart) {
-                severityChart.destroy();
-                severityChart = null;
-            }
-        }
+    }catch(error){
 
-        function renderCharts(alertTypeCounts, severityCounts) {
-            destroyCharts();
+        console.log(error);
+    }
+}
 
-            const alertCtx = document.getElementById("alertTypesChart").getContext("2d");
-            const severityCtx = document.getElementById("severityChart").getContext("2d");
+function exportLogsCSV(){
 
-            alertTypesChart = new Chart(alertCtx, {
-                type: "bar",
-                data: {
-                    labels: Object.keys(alertTypeCounts),
-                    datasets: [{
-                        label: "Alert Count",
-                        data: Object.values(alertTypeCounts)
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: "white" } } },
-                    scales: {
-                        x: { ticks: { color: "white" }, grid: { color: "#334155" } },
-                        y: { beginAtZero: true, ticks: { color: "white" }, grid: { color: "#334155" } }
-                    }
-                }
-            });
+    window.open("/logs/export/csv");
+}
 
-            severityChart = new Chart(severityCtx, {
-                type: "doughnut",
-                data: {
-                    labels: Object.keys(severityCounts),
-                    datasets: [{
-                        data: Object.values(severityCounts)
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: "white" } } }
-                }
-            });
-        }
+function exportAlertsCSV(){
 
-        function getFilters() {
-            const q = document.getElementById("searchInput").value.trim();
-            const source = document.getElementById("sourceInput").value.trim();
-            const eventType = document.getElementById("eventTypeInput").value.trim();
-            const severity = document.getElementById("severitySelect").value.trim();
+    window.open("/logs/alerts/export/csv");
+}
 
-            const params = new URLSearchParams();
+function exportLogsPDF(){
 
-            if (q) params.append("q", q);
-            if (source) params.append("source", source);
-            if (eventType) params.append("event_type", eventType);
-            if (severity) params.append("severity", severity);
+    window.open("/logs/export/pdf");
+}
 
-            return params.toString();
-        }
+async function createBackup(){
 
-        async function fetchModelMetrics() {
-            try {
-                const res = await fetch("/logs/model-metrics", { headers: getHeaders() });
-                if (!res.ok) throw new Error("Could not load model metrics");
+    try{
 
-                const metrics = await res.json();
+        const res = await fetch("/logs/backup",{
+            method:"POST",
+            headers:getHeaders()
+        });
 
-                document.getElementById("modelName").innerText = metrics.model_name || "-";
-                document.getElementById("modelAccuracy").innerText = metrics.accuracy ?? "-";
-                document.getElementById("modelPrecision").innerText = metrics.precision ?? "-";
-                document.getElementById("modelRecall").innerText = metrics.recall ?? "-";
-                document.getElementById("modelF1").innerText = metrics.f1_score ?? "-";
-                document.getElementById("trainingDataset").innerText = metrics.training_dataset || "-";
+        const data = await res.json();
 
-            } catch {
-                document.getElementById("modelName").innerText = "Error";
-                document.getElementById("modelAccuracy").innerText = "-";
-                document.getElementById("modelPrecision").innerText = "-";
-                document.getElementById("modelRecall").innerText = "-";
-                document.getElementById("modelF1").innerText = "-";
-                document.getElementById("trainingDataset").innerText = "-";
-            }
-        }
+        alert("Backup created: " + data.backup_file);
 
-        async function fetchDashboardData() {
-            const logsBox = document.getElementById("logsBox");
-            const alertsBox = document.getElementById("alertsBox");
-            const filters = getFilters();
+    }catch(error){
 
-            try {
-                const logsUrl = filters ? `/logs/?${filters}` : "/logs/";
-                const alertsUrl = "/logs/alerts";
+        alert("Backup failed");
+    }
+}
 
-                const [logsRes, alertsRes] = await Promise.all([
-                    fetch(logsUrl, { headers: getHeaders() }),
-                    fetch(alertsUrl, { headers: getHeaders() })
-                ]);
+window.onload = ()=>{
 
-                if (!logsRes.ok || !alertsRes.ok) {
-                    throw new Error("Unauthorized or failed to fetch data. Please login first.");
-                }
+    const token = getToken();
 
-                const logs = await logsRes.json();
-                const alerts = await alertsRes.json();
+    if(!token){
 
-                document.getElementById("totalLogs").innerText = logs.length;
-                document.getElementById("totalAlerts").innerText = alerts.length;
+       window.location.href = "/";
+       return;
+    }
 
-                const alertTypeCounts = countByKey(alerts, "type");
-                const ipCounts = countByKey(alerts, "source_ip");
-                const severityCounts = countByKey(alerts, "severity");
+    applyRolePermissions();
+    document.getElementById("currentUser").innerText =
+    localStorage.getItem("siem_username") || "-";
 
-                const [topAlertType] = getTopEntry(alertTypeCounts);
-                const [topIP] = getTopEntry(ipCounts);
+    document.getElementById("currentRole").innerText =
+    (localStorage.getItem("siem_role") || "-").toUpperCase();
+    
+    fetchDashboardData();
 
-                document.getElementById("topAlertType").innerText = topAlertType;
-                document.getElementById("topIP").innerText = topIP;
-                document.getElementById("lastRefresh").innerText = new Date().toLocaleTimeString();
+    setInterval(fetchDashboardData,5000);
+}
 
-                renderSummary("typeSummary", alertTypeCounts, "types");
-                renderSummary("ipSummary", ipCounts, "IPs");
-                renderCharts(alertTypeCounts, severityCounts);
+</script>
 
-                alertsBox.innerHTML = alerts.length ? alerts.slice(0, 12).map(alert => `
-                    <div class="entry">
-                        <strong>${alert.type || "UNKNOWN"} - ${alert.source_ip || "-"}</strong>
-                        <div class="meta">${severityTag(alert.severity)} ${alert.timestamp || ""}</div>
-                        <div class="meta">${alert.description || alert.details || "No description"}</div>
-                    </div>
-                `).join("") : `<span class="muted">No alerts yet</span>`;
-
-                logsBox.innerHTML = logs.length ? logs.slice(0, 12).map(log => `
-                    <div class="entry">
-                        <strong>${log.event_type || "UNKNOWN"} - ${log.source || "-"}</strong>
-                        <div class="meta">${severityTag(log.severity)} ${log.timestamp || ""}</div>
-                        <div class="meta">IP: ${log.source_ip || "-"}</div>
-                        <div class="meta">Risk Score: ${log.risk_score ?? "-"}</div>
-                        <div class="meta">User Label: ${log.user_label || "-"}</div>
-                        <div class="meta">Message Hash: ${log.message_hash ? log.message_hash.slice(0, 20) + "..." : "-"}</div>
-                        <div class="meta">${log.message || ""}</div>
-                    </div>
-                `).join("") : `<span class="muted">No logs found</span>`;
-
-                await fetchModelMetrics();
-
-            } catch (error) {
-                destroyCharts();
-                logsBox.innerHTML = `<span class="muted">Could not load logs</span>`;
-                alertsBox.innerHTML = `<span class="muted">Could not load alerts</span>`;
-                document.getElementById("totalLogs").innerText = "Error";
-                document.getElementById("totalAlerts").innerText = "Error";
-                document.getElementById("topAlertType").innerText = "-";
-                document.getElementById("topIP").innerText = "-";
-                document.getElementById("typeSummary").innerHTML = `<span class="muted">${error.message}</span>`;
-                document.getElementById("ipSummary").innerHTML = `<span class="muted">${error.message}</span>`;
-            }
-        }
-
-        function downloadBlob(response, filename) {
-            response.blob().then(blob => {
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = filename;
-                link.click();
-            });
-        }
-
-        function exportLogsCSV() {
-            const filters = getFilters();
-            const url = filters ? `/logs/export/csv?${filters}` : "/logs/export/csv";
-
-            fetch(url, { headers: getHeaders() })
-                .then(response => {
-                    if (!response.ok) throw new Error("Could not export logs");
-                    return downloadBlob(response, "logs_export.csv");
-                })
-                .catch(error => alert(error.message));
-        }
-
-        function exportAlertsCSV() {
-            fetch("/logs/alerts/export/csv", { headers: getHeaders() })
-                .then(response => {
-                    if (!response.ok) throw new Error("Could not export alerts");
-                    return downloadBlob(response, "alerts_export.csv");
-                })
-                .catch(error => alert(error.message));
-        }
-
-        function exportLogsPDF() {
-            const filters = getFilters();
-            const url = filters ? `/logs/export/pdf?${filters}` : "/logs/export/pdf";
-
-            fetch(url, { headers: getHeaders() })
-                .then(response => {
-                    if (!response.ok) throw new Error("Could not export logs PDF");
-                    return downloadBlob(response, "logs_report.pdf");
-                })
-                .catch(error => alert(error.message));
-        }
-
-        function createBackup() {
-            fetch("/logs/backup", {
-                method: "POST",
-                headers: getHeaders()
-            })
-                .then(response => {
-                    if (!response.ok) throw new Error("Only admin users can create backups");
-                    return response.json();
-                })
-                .then(data => {
-                    alert(`Backup created: ${data.backup_file}`);
-                })
-                .catch(error => alert(error.message));
-        }
-
-        window.onload = () => {
-            const savedToken = getToken();
-
-            if (savedToken) {
-                document.getElementById("tokenInput").value = savedToken;
-            }
-
-            fetchDashboardData();
-            setInterval(fetchDashboardData, 5000);
-        };
-    </script>
 </body>
 </html>
