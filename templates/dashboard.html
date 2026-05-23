@@ -604,20 +604,41 @@ async function fetchDashboardData(){
         console.log(error);
     }
 }
+async function downloadFile(url, filename){
+
+    const res = await fetch(url,{
+        headers:getHeaders()
+    });
+
+    if(!res.ok){
+        const err = await res.text();
+        alert("Download failed: " + err);
+        return;
+    }
+
+    const blob = await res.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+
+    a.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+}
 
 function exportLogsCSV(){
-
-    window.open("/logs/export/csv");
+    downloadFile("/logs/export/csv", "logs_export.csv");
 }
 
 function exportAlertsCSV(){
-
-    window.open("/logs/alerts/export/csv");
+    downloadFile("/logs/alerts/export/csv", "alerts_export.csv");
 }
 
 function exportLogsPDF(){
-
-    window.open("/logs/export/pdf");
+    downloadFile("/logs/export/pdf", "logs_report.pdf");
 }
 
 async function createBackup(){
