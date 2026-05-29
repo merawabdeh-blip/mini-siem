@@ -1,5 +1,6 @@
 from scapy.all import sniff, IP, TCP, UDP, ICMP
 import requests
+from collections import defaultdict
 from datetime import datetime
 
 SIEM_URL = "http://127.0.0.1:8000/logs/log"
@@ -9,6 +10,9 @@ HEADERS = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
 }
+
+port_scan_tracker = defaultdict(set)
+PORT_SCAN_THRESHOLD = 5
 
 
 def classify_packet(packet):
@@ -25,6 +29,20 @@ def classify_packet(packet):
         sport = packet[TCP].sport
         dport = packet[TCP].dport
         flags = str(packet[TCP].flags)
+
+        if "S" in flags and "A" not in flags:
+            port_scan_tracker[src_ip].add(dport)
+
+            if len(port_scan_tracker[src_ip]) >= PORT_SCAN_THRESHOLD:
+                return {
+                    "message": f"Possible port scan detected from {src_ip}: scanned {len(port_scan_tracker[src_ip])} ports",
+                    "source": "live_capture",
+                    "source_ip": src_ip,
+                    "event_type": "PORT_SCAN",
+                    "severity": "high",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "protocol": "TCP"
+                }
 
         message = (
             f"Live TCP packet detected "
@@ -52,6 +70,8 @@ def classify_packet(packet):
         "message": message,
         "source": "live_capture",
         "source_ip": src_ip,
+        "event_type": f"{proto}_ACTIVITY",
+        "severity": "medium",
         "timestamp": datetime.utcnow().isoformat(),
         "protocol": proto
     }
