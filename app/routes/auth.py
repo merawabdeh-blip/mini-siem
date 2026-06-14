@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from app.auth import hash_password, verify_password, create_access_token
 from app.database import get_db, insert_user, get_user_by_username
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_role
 from app.audit import log_audit_event
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -19,13 +19,14 @@ class RegisterRequest(BaseModel):
     username: str
     email: str
     password: str
-    role: str = "viewer"
 
 
 class LoginRequest(BaseModel):
     username: str
     password: str
 
+class UpdateRoleRequest(BaseModel):
+    role: str
 
 @router.post("/register")
 def register(user: RegisterRequest):
@@ -45,7 +46,7 @@ def register(user: RegisterRequest):
             user.username,
             user.email,
             password_hash,
-            user.role
+            "viewer"
         )
 
         log_audit_event(user.username, "REGISTER_SUCCESS", "/auth/register")
@@ -137,3 +138,69 @@ def me(current_user: dict = Depends(get_current_user)):
         "username": current_user.get("sub"),
         "role": current_user.get("role")
     }
+
+
+@router.put("/users/{username}/role")
+def update_user_role(
+    username: str,
+    request: UpdateRoleRequest,
+    current_user: dict = Depends(require_role(["admin"]))
+):
+    allowed_roles = ["viewer", "analyst", "admin"]
+    new_role = request.role.lower()
+
+    if new_role not in allowed_roles:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid role. Allowed roles are: viewer, analyst, admin"
+        )
+
+    if username == current_user["sub"] and new_role != "admin":
+        raise HTTPException(
+            status_code=400,
+            detail="Admin cannot downgrade their own role"
+        )
+
+    db_gen = get_db()
+    conn = next(db_gen)
+    cursor = conn.cursor()
+
+    try:
+        existing_user = get_user_by_username(conn, username)
+
+        if not existing_user:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+
+        cursor.execute(
+            "UPDATE users SET role = ? WHERE username = ?",
+            (new_role, username)
+        )
+
+        conn.commit()
+
+        log_audit_event(
+            current_user["sub"],
+            f"UPDATE_USER_ROLE_TO_{new_role.upper()}",
+            f"/auth/users/{username}/role"
+        )
+
+        return {
+            "message": "User role updated successfully",
+            "username": username,
+            "new_role": new_role
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update user role"
+        )
+
+    finally:
+        conn.close()
